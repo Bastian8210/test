@@ -465,31 +465,50 @@
     }
 
     function playSlashSound() {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const noise = audioCtx.createBufferSource();
-      const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.12, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+      const mix = audioCtx.createGain();
+      mix.gain.value = 0.6;
+
+      const grit = audioCtx.createBufferSource();
+      const gritBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.2, audioCtx.sampleRate);
+      const gritData = gritBuffer.getChannelData(0);
+      for (let i = 0; i < gritData.length; i++) {
+        const decay = 1 - i / gritData.length;
+        gritData[i] = (Math.random() * 2 - 1) * decay * 0.8;
       }
-      noise.buffer = buffer;
-      noise.connect(gain);
+      grit.buffer = gritBuffer;
 
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(320 + Math.random() * 40, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.16);
+      const body = audioCtx.createOscillator();
+      const bodyGain = audioCtx.createGain();
+      body.type = 'sawtooth';
+      body.frequency.setValueAtTime(260 + Math.random() * 60, audioCtx.currentTime);
+      body.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.2);
+      bodyGain.gain.setValueAtTime(0.24, audioCtx.currentTime);
+      bodyGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.26);
 
-      gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
+      const blood = audioCtx.createOscillator();
+      const bloodGain = audioCtx.createGain();
+      blood.type = 'triangle';
+      blood.frequency.setValueAtTime(120, audioCtx.currentTime);
+      blood.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+      bloodGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      bloodGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.28);
 
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(950, audioCtx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.2);
 
-      osc.start();
-      noise.start();
-      osc.stop(audioCtx.currentTime + 0.25);
-      noise.stop(audioCtx.currentTime + 0.25);
+      grit.connect(filter);
+      body.connect(bodyGain).connect(filter);
+      blood.connect(bloodGain).connect(filter);
+      filter.connect(mix).connect(audioCtx.destination);
+
+      body.start();
+      blood.start();
+      grit.start();
+      body.stop(audioCtx.currentTime + 0.3);
+      blood.stop(audioCtx.currentTime + 0.32);
+      grit.stop(audioCtx.currentTime + 0.3);
     }
 
     function playComboSound(multiplier) {
@@ -655,31 +674,95 @@
       }, 100);
     }
 
-    function registerPointer(e) {
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+    let activeStroke = null;
+
+    function getPoint(e) {
       const rect = arena.getBoundingClientRect();
-      const point = {
+      return {
         x: (e.touches?.[0]?.clientX || e.clientX) - rect.left,
         y: (e.touches?.[0]?.clientY || e.clientY) - rect.top,
       };
-      charm.classList.add('pressed');
-      registerSlice(point);
-      setTimeout(() => charm.classList.remove('pressed'), 80);
     }
 
-    charm.addEventListener('pointerdown', registerPointer);
-    charm.addEventListener('touchstart', (e) => registerPointer(e), { passive: true });
+    function centerHit(point) {
+      const arenaRect = arena.getBoundingClientRect();
+      const charmRect = charm.getBoundingClientRect();
+      const center = {
+        x: charmRect.left - arenaRect.left + charmRect.width / 2,
+        y: charmRect.top - arenaRect.top + charmRect.height / 2,
+      };
+      const radius = Math.min(charmRect.width, charmRect.height) * 0.26;
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+      return Math.hypot(dx, dy) <= radius;
+    }
 
-    arena.addEventListener('pointermove', (e) => {
-      if (e.buttons !== 1) return;
-      registerPointer(e);
-    });
+    function crossesCenter(p1, p2) {
+      if (!p1 || !p2) return false;
+      const arenaRect = arena.getBoundingClientRect();
+      const charmRect = charm.getBoundingClientRect();
+      const center = {
+        x: charmRect.left - arenaRect.left + charmRect.width / 2,
+        y: charmRect.top - arenaRect.top + charmRect.height / 2,
+      };
+      const radius = Math.min(charmRect.width, charmRect.height) * 0.26;
 
-    window.addEventListener('pointerup', () => {
+      const vx = p2.x - p1.x;
+      const vy = p2.y - p1.y;
+      const wx = center.x - p1.x;
+      const wy = center.y - p1.y;
+      const c1 = vx * wx + vy * wy;
+      const c2 = vx * vx + vy * vy;
+      const t = Math.max(0, Math.min(1, c1 / (c2 || 1)));
+      const projx = p1.x + vx * t;
+      const projy = p1.y + vy * t;
+      const dist = Math.hypot(center.x - projx, center.y - projy);
+      return dist <= radius;
+    }
+
+    function handlePointerDown(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const point = getPoint(e);
+      const inside = centerHit(point);
+      activeStroke = {
+        id: e.pointerId ?? 'touch',
+        last: point,
+        inside,
+      };
+      charm.classList.add('pressed');
+      if (inside) {
+        registerSlice(point);
+      }
+    }
+
+    function handlePointerMove(e) {
+      if (!activeStroke || (e.pointerId ?? 'touch') !== activeStroke.id) return;
+      if (e.buttons === 0) return;
+      const point = getPoint(e);
+      const inside = centerHit(point);
+      const crossing = crossesCenter(activeStroke.last, point);
+      if (!activeStroke.inside && (inside || crossing)) {
+        registerSlice(point);
+      }
+      activeStroke.last = point;
+      activeStroke.inside = inside;
+    }
+
+    function handlePointerUp(e) {
+      if (activeStroke && (e.pointerId ?? 'touch') === activeStroke.id) {
+        activeStroke = null;
+      }
       charm.classList.remove('pressed');
-    });
+    }
+
+    charm.addEventListener('pointerdown', handlePointerDown);
+    arena.addEventListener('pointerdown', handlePointerDown);
+    arena.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
 
     function init() {
       renderShop();
