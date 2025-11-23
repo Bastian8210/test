@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Paper Samurai Swipe</title>
+  <style>
+    :root {
+      --ink: #1e1b18;
+      --crimson: #b50b1a;
+      --gold: #c49b3b;
+      --paper: #f5f0e6;
+      --shadow: rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 20%, rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 25%, transparent 26%),
+        radial-gradient(circle at 80% 30%, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 23%, transparent 24%),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 12px),
+        var(--paper);
+      overflow: hidden;
+      padding: 1rem;
+    }
+
+    .scroll {
+      width: min(420px, 95vw);
+      background: linear-gradient(180deg, #f7f2e8 0%, #efe5d7 100%);
+      border: 10px solid var(--ink);
+      border-image: linear-gradient(180deg, #2b221d, #4c3a2d) 1;
+      box-shadow: 0 18px 40px var(--shadow), inset 0 0 0 2px rgba(0,0,0,0.05);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    header {
+      padding: 16px;
+      text-align: center;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+      background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.3));
+      backdrop-filter: blur(6px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 5vw, 1.8rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .kanji-tag {
+      display: inline-block;
+      padding: 6px 14px;
+      margin-top: 8px;
+      background: var(--crimson);
+      color: #fff;
+      border-radius: 999px;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      box-shadow: 0 10px 20px rgba(181, 11, 26, 0.25);
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: rgba(255,255,255,0.85);
+      font-weight: 600;
+      font-size: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .stat-label {
+      color: rgba(0,0,0,0.55);
+      font-size: 0.9rem;
+    }
+
+    .arena {
+      position: relative;
+      height: min(60vh, 520px);
+      min-height: 320px;
+      background: repeating-linear-gradient(180deg, rgba(0,0,0,0.06) 0, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 18px),
+        linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6));
+      overflow: hidden;
+    }
+
+    .parchment-edge {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(0deg, rgba(0,0,0,0.05), transparent 25%),
+        linear-gradient(180deg, rgba(0,0,0,0.05), transparent 25%);
+      mix-blend-mode: multiply;
+    }
+
+    .targets {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .target {
+      background: rgba(255,255,255,0.88);
+      border: 2px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04), 0 10px 18px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .target::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 30%, rgba(0,0,0,0.05), transparent 45%);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .target-icon {
+      font-size: 2rem;
+    }
+
+    .target-label {
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: rgba(0,0,0,0.65);
+    }
+
+    .slash-mark {
+      position: absolute;
+      width: 160px;
+      height: 6px;
+      background: linear-gradient(90deg, transparent, rgba(181,11,26,0.9) 40%, rgba(181,11,26,0.9) 60%, transparent);
+      transform-origin: center;
+      pointer-events: none;
+      filter: drop-shadow(0 6px 8px rgba(181,11,26,0.35));
+      animation: slash 450ms ease-out forwards;
+    }
+
+    @keyframes slash {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(var(--rot)); }
+      45% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) rotate(var(--rot)); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2) rotate(var(--rot)); }
+    }
+
+    .combo-burst {
+      position: absolute;
+      font-weight: 900;
+      color: var(--crimson);
+      text-shadow: 0 6px 12px rgba(181,11,26,0.25);
+      animation: burst 700ms ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes burst {
+      0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+      40% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      100% { transform: translate(-50%, -80%) scale(1); opacity: 0; }
+    }
+
+    .combo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(181, 11, 26, 0.12);
+      border-radius: 14px;
+      border: 1px solid rgba(181, 11, 26, 0.35);
+      color: var(--crimson);
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      box-shadow: 0 10px 18px rgba(181, 11, 26, 0.15);
+      transform: scale(1);
+      transition: transform 120ms ease;
+    }
+
+    .combo-pill.pop {
+      animation: pop 220ms ease;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.14); }
+      100% { transform: scale(1); }
+    }
+
+    .footer {
+      padding: 14px;
+      text-align: center;
+      font-size: 0.92rem;
+      background: rgba(255,255,255,0.85);
+      border-top: 1px solid rgba(0,0,0,0.08);
+      color: rgba(0,0,0,0.65);
+    }
+  </style>
+</head>
+<body>
+  <main class="scroll">
+    <header>
+      <h1>Paper Samurai Swipe</h1>
+      <div class="kanji-tag">斬</div>
+    </header>
+
+    <section class="stats">
+      <div>
+        <div class="stat-label">Slices</div>
+        <div id="score">0</div>
+      </div>
+      <div class="combo-pill" id="combo">Combo x1</div>
+    </section>
+
+    <section class="arena" id="arena">
+      <div class="targets" id="targets"></div>
+      <div class="parchment-edge"></div>
+    </section>
+
+    <div class="footer">Swipe or tap to slash the hanging charms. Quick hits boost your combo!</div>
+  </main>
+
+  <script>
+    const arena = document.getElementById('arena');
+    const targets = document.getElementById('targets');
+    const scoreEl = document.getElementById('score');
+    const comboEl = document.getElementById('combo');
+
+    const charms = [
+      { icon: '🈴', label: 'Honor' },
+      { icon: '🈶', label: 'Spirit' },
+      { icon: '🈚', label: 'Wind' },
+      { icon: '🈸', label: 'Blade' },
+      { icon: '🈹', label: 'Focus' },
+      { icon: '⛩️', label: 'Shrine' }
+    ];
+
+    let score = 0;
+    let combo = 1;
+    let lastSlashTime = 0;
+    let lastCoord = { x: 0, y: 0 };
+    let slashCooldown = 0;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function spawnTargets() {
+      targets.innerHTML = '';
+      charms.forEach((c, idx) => {
+        const t = document.createElement('div');
+        t.className = 'target';
+        t.dataset.id = idx;
+        t.innerHTML = `<div class="target-icon">${c.icon}</div><div class="target-label">${c.label}</div>`;
+        targets.appendChild(t);
+      });
+    }
+
+    function playSlashSound() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const noise = audioCtx.createBufferSource();
+      const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.12, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+      }
+      noise.buffer = buffer;
+      noise.connect(gain);
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320 + Math.random() * 40, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.16);
+
+      gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      noise.start();
+      osc.stop(audioCtx.currentTime + 0.25);
+      noise.stop(audioCtx.currentTime + 0.25);
+    }
+
+    function playComboSound(multiplier) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180 + multiplier * 20, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    function updateCombo(isCombo) {
+      comboEl.textContent = `Combo x${combo}`;
+      comboEl.classList.add('pop');
+      comboEl.addEventListener('animationend', () => comboEl.classList.remove('pop'), { once: true });
+      if (isCombo && combo > 1) {
+        playComboSound(combo);
+      }
+    }
+
+    function addSlash(x, y) {
+      const angle = (Math.random() * 40 - 20) + 'deg';
+      const slash = document.createElement('div');
+      slash.className = 'slash-mark';
+      slash.style.left = `${x}px`;
+      slash.style.top = `${y}px`;
+      slash.style.setProperty('--rot', angle);
+      arena.appendChild(slash);
+      slash.addEventListener('animationend', () => slash.remove());
+    }
+
+    function addComboBurst(x, y) {
+      const burst = document.createElement('div');
+      burst.className = 'combo-burst';
+      burst.textContent = `x${combo}!`;
+      burst.style.left = `${x}px`;
+      burst.style.top = `${y}px`;
+      arena.appendChild(burst);
+      burst.addEventListener('animationend', () => burst.remove());
+    }
+
+    function registerSlash(point) {
+      const now = performance.now();
+      const dx = point.x - lastCoord.x;
+      const dy = point.y - lastCoord.y;
+      const dist = Math.hypot(dx, dy);
+      if (now - slashCooldown < 70 && dist < 24) return;
+      slashCooldown = now;
+
+      const comboWindow = 950;
+      const inCombo = now - lastSlashTime < comboWindow;
+      combo = inCombo ? combo + 1 : 1;
+      lastSlashTime = now;
+
+      score += combo;
+      scoreEl.textContent = score.toLocaleString();
+
+      addSlash(point.x, point.y);
+      if (combo > 1) addComboBurst(point.x, point.y);
+
+      updateCombo(inCombo);
+      playSlashSound();
+      lastCoord = point;
+    }
+
+    function getPoint(e) {
+      const rect = arena.getBoundingClientRect();
+      if (e.touches && e.touches[0]) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+      }
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    let pointerDown = false;
+    arena.addEventListener('pointerdown', (e) => {
+      pointerDown = true;
+      registerSlash(getPoint(e));
+    });
+
+    arena.addEventListener('pointermove', (e) => {
+      if (!pointerDown) return;
+      registerSlash(getPoint(e));
+    });
+
+    window.addEventListener('pointerup', () => {
+      pointerDown = false;
+    });
+
+    arena.addEventListener('touchstart', (e) => {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }, { passive: true });
+
+    spawnTargets();
+  </script>
+</body>
+</html>
