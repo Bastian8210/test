@@ -1,0 +1,330 @@
+// !$*UTF8*$!
+{
+archiveVersion = 1;
+classes = {};
+objectVersion = 55;
+objects = {
+
+/* Begin PBXBuildFile section */
+1A1B2C3D4E5F000100000001 /* IdleTycoonGameApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1B2C3D4E5F000100000010 /* IdleTycoonGameApp.swift */; };
+1A1B2C3D4E5F000100000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1B2C3D4E5F000100000011 /* ContentView.swift */; };
+1A1B2C3D4E5F000100000003 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1B2C3D4E5F000100000012 /* GameState.swift */; };
+1A1B2C3D4E5F000100000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A1B2C3D4E5F000100000013 /* Assets.xcassets */; };
+1A1B2C3D4E5F000100000005 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A1B2C3D4E5F000100000014 /* Preview Assets.xcassets */; };
+1A1B2C3D4E5F000100000006 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1A1B2C3D4E5F000100000015 /* Info.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+1A1B2C3D4E5F000100000010 /* IdleTycoonGameApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdleTycoonGameApp.swift; sourceTree = "<group>"; };
+1A1B2C3D4E5F000100000011 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+1A1B2C3D4E5F000100000012 /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
+1A1B2C3D4E5F000100000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+1A1B2C3D4E5F000100000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+1A1B2C3D4E5F000100000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+1A1B2C3D4E5F000100000020 /* IdleTycoonGame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IdleTycoonGame.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+1A1B2C3D4E5F000100000030 /* Frameworks */ = {
+isa = PBXFrameworksBuildPhase;
+buildActionMask = 2147483647;
+files = (
+);
+runOnlyForDeploymentPostprocessing = 0;
+};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+1A1B2C3D4E5F000100000040 /* Products */ = {
+isa = PBXGroup;
+children = (
+1A1B2C3D4E5F000100000020 /* IdleTycoonGame.app */,
+);
+name = Products;
+sourceTree = "<group>";
+};
+1A1B2C3D4E5F000100000041 /* IdleTycoonGame */ = {
+isa = PBXGroup;
+children = (
+1A1B2C3D4E5F000100000010 /* IdleTycoonGameApp.swift */,
+1A1B2C3D4E5F000100000011 /* ContentView.swift */,
+1A1B2C3D4E5F000100000012 /* GameState.swift */,
+1A1B2C3D4E5F000100000013 /* Assets.xcassets */,
+1A1B2C3D4E5F000100000016 /* Preview Content */,
+1A1B2C3D4E5F000100000015 /* Info.plist */,
+);
+path = IdleTycoonGame;
+sourceTree = "<group>";
+};
+1A1B2C3D4E5F000100000000 = {
+isa = PBXGroup;
+children = (
+1A1B2C3D4E5F000100000041 /* IdleTycoonGame */,
+1A1B2C3D4E5F000100000040 /* Products */,
+);
+sourceTree = "<group>";
+};
+1A1B2C3D4E5F000100000016 /* Preview Content */ = {
+isa = PBXGroup;
+children = (
+1A1B2C3D4E5F000100000014 /* Preview Assets.xcassets */,
+);
+path = "Preview Content";
+sourceTree = "<group>";
+};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+1A1B2C3D4E5F000100000050 /* IdleTycoonGame */ = {
+isa = PBXNativeTarget;
+buildConfigurationList = 1A1B2C3D4E5F000100000080 /* Build configuration list for PBXNativeTarget "IdleTycoonGame" */;
+buildPhases = (
+1A1B2C3D4E5F000100000060 /* Sources */,
+1A1B2C3D4E5F000100000061 /* Resources */,
+1A1B2C3D4E5F000100000030 /* Frameworks */,
+);
+buildRules = (
+);
+dependencies = (
+);
+name = IdleTycoonGame;
+productName = IdleTycoonGame;
+productReference = 1A1B2C3D4E5F000100000020 /* IdleTycoonGame.app */;
+productType = "com.apple.product-type.application";
+};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+1A1B2C3D4E5F000100000070 /* Project object */ = {
+isa = PBXProject;
+attributes = {
+BuildIndependentTargetsInParallel = 1;
+LastSwiftUpdateCheck = 1500;
+LastUpgradeCheck = 1500;
+TargetAttributes = {
+1A1B2C3D4E5F000100000050 = {
+DevelopmentTeam = "";
+ProvisioningStyle = Automatic;
+};
+};
+};
+buildConfigurationList = 1A1B2C3D4E5F000100000081 /* Build configuration list for PBXProject "IdleTycoonGame" */;
+compatibilityVersion = "Xcode 15.0";
+developmentRegion = en;
+hasScannedForEncodings = 0;
+knownRegions = (
+en,
+);
+mainGroup = 1A1B2C3D4E5F000100000000;
+productRefGroup = 1A1B2C3D4E5F000100000040 /* Products */;
+projectDirPath = "";
+projectRoot = "";
+targets = (
+1A1B2C3D4E5F000100000050 /* IdleTycoonGame */,
+);
+};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+1A1B2C3D4E5F000100000061 /* Resources */ = {
+isa = PBXResourcesBuildPhase;
+buildActionMask = 2147483647;
+files = (
+1A1B2C3D4E5F000100000004 /* Assets.xcassets in Resources */,
+1A1B2C3D4E5F000100000005 /* Preview Assets.xcassets in Resources */,
+1A1B2C3D4E5F000100000006 /* Info.plist in Resources */,
+);
+runOnlyForDeploymentPostprocessing = 0;
+};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+1A1B2C3D4E5F000100000060 /* Sources */ = {
+isa = PBXSourcesBuildPhase;
+buildActionMask = 2147483647;
+files = (
+1A1B2C3D4E5F000100000003 /* GameState.swift in Sources */,
+1A1B2C3D4E5F000100000002 /* ContentView.swift in Sources */,
+1A1B2C3D4E5F000100000001 /* IdleTycoonGameApp.swift in Sources */,
+);
+runOnlyForDeploymentPostprocessing = 0;
+};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+1A1B2C3D4E5F000100000090 /* Debug */ = {
+isa = XCBuildConfiguration;
+buildSettings = {
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+DEVELOPMENT_TEAM = "";
+INFOPLIST_FILE = IdleTycoonGame/Info.plist;
+IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+LD_RUNPATH_SEARCH_PATHS = (
+"$(inherited)",
+"@executable_path/Frameworks",
+);
+PRODUCT_BUNDLE_IDENTIFIER = com.example.idletycoon;
+PRODUCT_NAME = "$(TARGET_NAME)";
+SDKROOT = iphoneos;
+SWIFT_EMIT_LOC_STRINGS = YES;
+SWIFT_VERSION = 5.0;
+TARGETED_DEVICE_FAMILY = "1";
+CODE_SIGN_STYLE = Automatic;
+};
+name = Debug;
+};
+1A1B2C3D4E5F000100000091 /* Release */ = {
+isa = XCBuildConfiguration;
+buildSettings = {
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+DEVELOPMENT_TEAM = "";
+INFOPLIST_FILE = IdleTycoonGame/Info.plist;
+IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+LD_RUNPATH_SEARCH_PATHS = (
+"$(inherited)",
+"@executable_path/Frameworks",
+);
+PRODUCT_BUNDLE_IDENTIFIER = com.example.idletycoon;
+PRODUCT_NAME = "$(TARGET_NAME)";
+SDKROOT = iphoneos;
+SWIFT_EMIT_LOC_STRINGS = YES;
+SWIFT_VERSION = 5.0;
+TARGETED_DEVICE_FAMILY = "1";
+CODE_SIGN_STYLE = Automatic;
+};
+name = Release;
+};
+1A1B2C3D4E5F000100000092 /* Debug */ = {
+isa = XCBuildConfiguration;
+buildSettings = {
+ALWAYS_SEARCH_USER_PATHS = NO;
+CLANG_ANALYZER_NONNULL = YES;
+CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+CLANG_ENABLE_MODULES = YES;
+CLANG_ENABLE_OBJC_ARC = YES;
+CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+CLANG_WARN_BOOL_CONVERSION = YES;
+CLANG_WARN_COMMA = YES;
+CLANG_WARN_CONSTANT_CONVERSION = YES;
+CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+CLANG_WARN_EMPTY_BODY = YES;
+CLANG_WARN_ENUM_CONVERSION = YES;
+CLANG_WARN_INFINITE_RECURSION = YES;
+CLANG_WARN_INT_CONVERSION = YES;
+CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+CLANG_WARN_STRICT_PROTOTYPES = YES;
+CLANG_WARN_SUSPICIOUS_MOVE = YES;
+CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+CLANG_WARN_UNREACHABLE_CODE = YES;
+CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+CODE_SIGN_STYLE = Automatic;
+COPY_PHASE_STRIP = NO;
+DEBUG_INFORMATION_FORMAT = dwarf;
+ENABLE_STRICT_OBJC_MSGSEND = YES;
+ENABLE_TESTABILITY = YES;
+GCC_C_LANGUAGE_STANDARD = gnu11;
+GCC_DYNAMIC_NO_PIC = NO;
+GCC_NO_COMMON_BLOCKS = YES;
+GCC_OPTIMIZATION_LEVEL = 0;
+GCC_PREPROCESSOR_DEFINITIONS = (
+"DEBUG=1",
+"$(inherited)",
+);
+GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+GCC_WARN_UNDECLARED_SELECTOR = YES;
+GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+GCC_WARN_UNUSED_FUNCTION = YES;
+GCC_WARN_UNUSED_VARIABLE = YES;
+IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+MTL_ENABLE_DEBUG_INFO = YES;
+ONLY_ACTIVE_ARCH = YES;
+SDKROOT = iphoneos;
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+};
+name = Debug;
+};
+1A1B2C3D4E5F000100000093 /* Release */ = {
+isa = XCBuildConfiguration;
+buildSettings = {
+ALWAYS_SEARCH_USER_PATHS = NO;
+CLANG_ANALYZER_NONNULL = YES;
+CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+CLANG_ENABLE_MODULES = YES;
+CLANG_ENABLE_OBJC_ARC = YES;
+CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+CLANG_WARN_BOOL_CONVERSION = YES;
+CLANG_WARN_COMMA = YES;
+CLANG_WARN_CONSTANT_CONVERSION = YES;
+CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+CLANG_WARN_EMPTY_BODY = YES;
+CLANG_WARN_ENUM_CONVERSION = YES;
+CLANG_WARN_INFINITE_RECURSION = YES;
+CLANG_WARN_INT_CONVERSION = YES;
+CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+CLANG_WARN_STRICT_PROTOTYPES = YES;
+CLANG_WARN_SUSPICIOUS_MOVE = YES;
+CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+CLANG_WARN_UNREACHABLE_CODE = YES;
+CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+CODE_SIGN_STYLE = Automatic;
+COPY_PHASE_STRIP = NO;
+DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+ENABLE_NS_ASSERTIONS = NO;
+ENABLE_STRICT_OBJC_MSGSEND = YES;
+GCC_C_LANGUAGE_STANDARD = gnu11;
+GCC_NO_COMMON_BLOCKS = YES;
+GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+GCC_WARN_UNDECLARED_SELECTOR = YES;
+GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+GCC_WARN_UNUSED_FUNCTION = YES;
+GCC_WARN_UNUSED_VARIABLE = YES;
+IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+MTL_ENABLE_DEBUG_INFO = NO;
+SDKROOT = iphoneos;
+SWIFT_COMPILATION_MODE = wholemodule;
+SWIFT_OPTIMIZATION_LEVEL = "-O";
+};
+name = Release;
+};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+1A1B2C3D4E5F000100000081 /* Build configuration list for PBXProject "IdleTycoonGame" */ = {
+isa = XCConfigurationList;
+buildConfigurations = (
+1A1B2C3D4E5F000100000092 /* Debug */,
+1A1B2C3D4E5F000100000093 /* Release */,
+);
+defaultConfigurationIsVisible = 0;
+defaultConfigurationName = Debug;
+};
+1A1B2C3D4E5F000100000080 /* Build configuration list for PBXNativeTarget "IdleTycoonGame" */ = {
+isa = XCConfigurationList;
+buildConfigurations = (
+1A1B2C3D4E5F000100000090 /* Debug */,
+1A1B2C3D4E5F000100000091 /* Release */,
+);
+defaultConfigurationIsVisible = 0;
+defaultConfigurationName = Debug;
+};
+/* End XCConfigurationList section */
+};
+rootObject = 1A1B2C3D4E5F000100000070 /* Project object */;
+}
