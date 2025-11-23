@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Paper Samurai Clicker</title>
+  <style>
+    :root {
+      --ink: #1e1b18;
+      --crimson: #b50b1a;
+      --crimson-soft: rgba(181, 11, 26, 0.18);
+      --gold: #c49b3b;
+      --paper: #f5f0e6;
+      --shadow: rgba(0, 0, 0, 0.14);
+      --jade: #1f7a5c;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 20%, rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 25%, transparent 26%),
+        radial-gradient(circle at 80% 30%, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 23%, transparent 24%),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 12px),
+        var(--paper);
+      overflow: hidden;
+      padding: 1rem;
+    }
+
+    .scroll {
+      width: min(460px, 96vw);
+      background: linear-gradient(180deg, #f7f2e8 0%, #efe5d7 100%);
+      border: 10px solid var(--ink);
+      border-image: linear-gradient(180deg, #2b221d, #4c3a2d) 1;
+      box-shadow: 0 18px 40px var(--shadow), inset 0 0 0 2px rgba(0,0,0,0.05);
+      border-radius: 18px;
+      overflow: hidden;
+      position: relative;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 18px 12px;
+      text-align: center;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+      background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.3));
+      backdrop-filter: blur(6px);
+      position: sticky;
+      top: 0;
+      z-index: 4;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 5vw, 1.8rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .kanji-tag {
+      display: inline-block;
+      padding: 6px 14px;
+      margin-top: 8px;
+      background: var(--crimson);
+      color: #fff;
+      border-radius: 999px;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      box-shadow: 0 10px 20px rgba(181, 11, 26, 0.25);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.9);
+      font-weight: 700;
+      font-size: 1rem;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      z-index: 3;
+      position: sticky;
+      top: 74px;
+    }
+
+    .stat-block {
+      background: rgba(0,0,0,0.02);
+      border-radius: 12px;
+      padding: 10px;
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+    }
+
+    .stat-label {
+      color: rgba(0,0,0,0.55);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .big {
+      font-size: 1.2rem;
+      line-height: 1.2;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--crimson), #e2555f);
+      transition: width 160ms ease;
+    }
+
+    .arena {
+      position: relative;
+      flex: 1;
+      min-height: 360px;
+      background:
+        repeating-linear-gradient(180deg, rgba(0,0,0,0.06) 0, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 18px),
+        linear-gradient(135deg, rgba(255,255,255,0.82), rgba(255,255,255,0.68));
+      overflow: hidden;
+      padding: 12px;
+    }
+
+    .parchment-edge {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(0deg, rgba(0,0,0,0.05), transparent 25%),
+        linear-gradient(180deg, rgba(0,0,0,0.05), transparent 25%);
+      mix-blend-mode: multiply;
+      z-index: 1;
+    }
+
+    .centerpiece {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 12px auto;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(0,0,0,0.1), transparent 45%), #fdfaf4;
+      border: 6px double rgba(0,0,0,0.12);
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.05), 0 18px 40px rgba(0,0,0,0.12);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    .charm {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      border-radius: 28px;
+      background: linear-gradient(160deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+      border: 3px solid rgba(0,0,0,0.08);
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06), 0 16px 24px rgba(0,0,0,0.16);
+      display: grid;
+      place-items: center;
+      font-size: 3rem;
+      letter-spacing: 0.08em;
+      transition: transform 80ms ease;
+    }
+
+    .charm.pressed {
+      transform: scale(0.96);
+    }
+
+    .charm::after {
+      content: '✦';
+      position: absolute;
+      inset: 10px;
+      border-radius: 22px;
+      border: 1px dashed rgba(0,0,0,0.12);
+      color: rgba(0,0,0,0.08);
+      display: grid;
+      place-items: center;
+      letter-spacing: 1.2em;
+      font-size: 1.1rem;
+    }
+
+    .combo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(181, 11, 26, 0.12);
+      border-radius: 14px;
+      border: 1px solid rgba(181, 11, 26, 0.35);
+      color: var(--crimson);
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      box-shadow: 0 10px 18px rgba(181, 11, 26, 0.15);
+      transform: scale(1);
+      transition: transform 120ms ease;
+    }
+
+    .combo-pill.pop {
+      animation: pop 220ms ease;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.14); }
+      100% { transform: scale(1); }
+    }
+
+    .slash-mark {
+      position: absolute;
+      width: 180px;
+      height: 7px;
+      background: linear-gradient(90deg, transparent, rgba(181,11,26,0.9) 40%, rgba(181,11,26,0.9) 60%, transparent);
+      transform-origin: center;
+      pointer-events: none;
+      filter: drop-shadow(0 6px 8px rgba(181,11,26,0.35));
+      animation: slash 450ms ease-out forwards;
+      z-index: 3;
+    }
+
+    @keyframes slash {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(var(--rot)); }
+      45% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) rotate(var(--rot)); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2) rotate(var(--rot)); }
+    }
+
+    .combo-burst {
+      position: absolute;
+      font-weight: 900;
+      color: var(--crimson);
+      text-shadow: 0 6px 12px rgba(181,11,26,0.25);
+      animation: burst 700ms ease-out forwards;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    @keyframes burst {
+      0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+      40% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      100% { transform: translate(-50%, -80%) scale(1); opacity: 0; }
+    }
+
+    .floating-paper {
+      position: absolute;
+      top: -20px;
+      width: 12px;
+      height: 28px;
+      background: rgba(255,255,255,0.85);
+      border-radius: 4px;
+      box-shadow: 0 8px 14px rgba(0,0,0,0.08);
+      animation: drift 6s linear infinite;
+      opacity: 0.7;
+      z-index: 0;
+    }
+
+    @keyframes drift {
+      0% { transform: translateY(0) rotate(0deg); }
+      100% { transform: translateY(420px) rotate(120deg); }
+    }
+
+    .shop {
+      padding: 12px 14px 16px;
+      background: rgba(255,255,255,0.9);
+      border-top: 1px solid rgba(0,0,0,0.08);
+      max-height: 36vh;
+      overflow: auto;
+      z-index: 2;
+    }
+
+    .shop h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .upgrade {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: rgba(0,0,0,0.02);
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+      transition: transform 120ms ease, box-shadow 120ms ease, border 120ms ease;
+    }
+
+    .upgrade.affordable {
+      border-color: rgba(181,11,26,0.35);
+      box-shadow: 0 10px 18px rgba(181, 11, 26, 0.12), inset 0 0 0 1px rgba(255,255,255,0.8);
+      transform: translateY(-2px);
+    }
+
+    .upgrade.disabled {
+      opacity: 0.55;
+    }
+
+    .upgrade-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .upgrade-title {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .upgrade-desc {
+      color: rgba(0,0,0,0.64);
+      font-size: 0.9rem;
+      line-height: 1.2;
+    }
+
+    .price {
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.06);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .pill.rare {
+      background: rgba(31, 122, 92, 0.14);
+      color: var(--jade);
+    }
+
+    .footer {
+      padding: 12px 14px 16px;
+      text-align: center;
+      font-size: 0.92rem;
+      background: rgba(255,255,255,0.88);
+      border-top: 1px solid rgba(0,0,0,0.08);
+      color: rgba(0,0,0,0.65);
+    }
+
+    @media (max-height: 700px) {
+      .scroll { max-height: unset; }
+      .shop { max-height: 42vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="scroll">
+    <header>
+      <h1>Paper Samurai Clicker</h1>
+      <div class="kanji-tag">斬</div>
+    </header>
+
+    <section class="stats">
+      <div class="stat-block">
+        <div class="stat-label">Slices</div>
+        <div class="big" id="score">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Per Second</div>
+        <div class="big" id="sps">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Best Combo</div>
+        <div class="big" id="bestCombo">x1</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="comboMeter"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="arena" id="arena">
+      <div class="centerpiece" id="center">
+        <div class="charm" id="charm">紙</div>
+        <div class="combo-pill" id="combo">Combo x1</div>
+      </div>
+      <div class="parchment-edge"></div>
+    </section>
+
+    <section class="shop" id="shop">
+      <h2>Dojo Upgrades</h2>
+      <div id="upgradeList"></div>
+    </section>
+
+    <div class="footer">Tap or swipe the charm to slice paper. Buy upgrades to automate your dojo.</div>
+  </main>
+
+  <script>
+    const arena = document.getElementById('arena');
+    const charm = document.getElementById('charm');
+    const scoreEl = document.getElementById('score');
+    const comboEl = document.getElementById('combo');
+    const bestComboEl = document.getElementById('bestCombo');
+    const comboMeter = document.getElementById('comboMeter');
+    const spsEl = document.getElementById('sps');
+    const shopList = document.getElementById('upgradeList');
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    let score = 0;
+    let combo = 1;
+    let bestCombo = 1;
+    let comboTimeout;
+    let lastSlash = 0;
+    let perSecond = 0;
+    let multiplier = 1;
+    let prestigeStacks = 0;
+
+    const upgrades = [
+      { id: 'ink', name: 'Ink Drip', desc: 'A steady drip of ink adds to your slices.', base: 15, owned: 0, gain: 0.2 },
+      { id: 'brush', name: 'Brush Assistant', desc: 'A silent assistant practicing cuts for you.', base: 90, owned: 0, gain: 1 },
+      { id: 'lantern', name: 'Lantern Rhythm', desc: 'Lantern swings keep your timing sharp (+combo window).', base: 280, owned: 0, gain: 3, comboBonus: 120 },
+      { id: 'origami', name: 'Origami Storm', desc: 'Folded cranes flutter, multiplying click power.', base: 520, owned: 0, clickMult: 0.5 },
+      { id: 'garden', name: 'Zen Garden', desc: 'Peaceful raking doubles all automation.', base: 1100, owned: 0, cpsMult: 0.25 },
+      { id: 'bell', name: 'Temple Bell', desc: 'Ringing bell refreshes your focus, huge combo bursts.', base: 2600, owned: 0, comboBonus: 260 },
+    ];
+
+    function format(num) {
+      return Math.floor(num).toLocaleString();
+    }
+
+    function comboWindow() {
+      const base = 1100;
+      const bonus = upgrades.reduce((a, u) => a + (u.comboBonus || 0) * u.owned, 0);
+      return base + bonus;
+    }
+
+    function clickPower() {
+      const base = 1;
+      const add = upgrades.reduce((a, u) => a + (u.clickMult || 0) * u.owned, 0);
+      return (base + add) * Math.max(1, prestigeStacks * 0.1 + 1);
+    }
+
+    function automationRate() {
+      const cps = upgrades.reduce((a, u) => a + (u.gain || 0) * u.owned, 0);
+      const mult = upgrades.reduce((a, u) => a + (u.cpsMult || 0) * u.owned, 0);
+      return cps * (1 + mult);
+    }
+
+    function playSlashSound() {
+      const mix = audioCtx.createGain();
+      mix.gain.value = 0.6;
+
+      const grit = audioCtx.createBufferSource();
+      const gritBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.2, audioCtx.sampleRate);
+      const gritData = gritBuffer.getChannelData(0);
+      for (let i = 0; i < gritData.length; i++) {
+        const decay = 1 - i / gritData.length;
+        gritData[i] = (Math.random() * 2 - 1) * decay * 0.8;
+      }
+      grit.buffer = gritBuffer;
+
+      const body = audioCtx.createOscillator();
+      const bodyGain = audioCtx.createGain();
+      body.type = 'sawtooth';
+      body.frequency.setValueAtTime(260 + Math.random() * 60, audioCtx.currentTime);
+      body.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.2);
+      bodyGain.gain.setValueAtTime(0.24, audioCtx.currentTime);
+      bodyGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.26);
+
+      const blood = audioCtx.createOscillator();
+      const bloodGain = audioCtx.createGain();
+      blood.type = 'triangle';
+      blood.frequency.setValueAtTime(120, audioCtx.currentTime);
+      blood.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+      bloodGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      bloodGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.28);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(950, audioCtx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.2);
+
+      grit.connect(filter);
+      body.connect(bodyGain).connect(filter);
+      blood.connect(bloodGain).connect(filter);
+      filter.connect(mix).connect(audioCtx.destination);
+
+      body.start();
+      blood.start();
+      grit.start();
+      body.stop(audioCtx.currentTime + 0.3);
+      blood.stop(audioCtx.currentTime + 0.32);
+      grit.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function playComboSound(multiplier) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180 + multiplier * 20, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    function addSlash(x, y) {
+      const angle = (Math.random() * 40 - 20) + 'deg';
+      const slash = document.createElement('div');
+      slash.className = 'slash-mark';
+      slash.style.left = `${x}px`;
+      slash.style.top = `${y}px`;
+      slash.style.setProperty('--rot', angle);
+      arena.appendChild(slash);
+      slash.addEventListener('animationend', () => slash.remove());
+    }
+
+    function addComboBurst(x, y, text) {
+      const burst = document.createElement('div');
+      burst.className = 'combo-burst';
+      burst.textContent = text || `x${combo}!`;
+      burst.style.left = `${x}px`;
+      burst.style.top = `${y}px`;
+      arena.appendChild(burst);
+      burst.addEventListener('animationend', () => burst.remove());
+    }
+
+    function updateComboMeter() {
+      const windowMs = comboWindow();
+      const elapsed = performance.now() - lastSlash;
+      const ratio = Math.max(0, 1 - elapsed / windowMs);
+      comboMeter.style.width = `${Math.min(100, ratio * 100)}%`;
+      requestAnimationFrame(updateComboMeter);
+    }
+
+    function updateStatsUI() {
+      scoreEl.textContent = format(score);
+      const cps = automationRate();
+      perSecond = cps;
+      spsEl.textContent = cps.toFixed(1);
+      bestComboEl.textContent = `x${bestCombo}`;
+    }
+
+    function bumpCombo(isCombo) {
+      comboEl.textContent = `Combo x${combo}`;
+      comboEl.classList.add('pop');
+      comboEl.addEventListener('animationend', () => comboEl.classList.remove('pop'), { once: true });
+      if (isCombo && combo > 1) {
+        playComboSound(combo);
+      }
+    }
+
+    function earn(amount, point) {
+      score += amount;
+      if (score < 0) score = 0;
+      scoreEl.textContent = format(score);
+      if (point) {
+        addSlash(point.x, point.y);
+        if (combo > 1) addComboBurst(point.x, point.y);
+      }
+    }
+
+    function registerSlice(point) {
+      const now = performance.now();
+      const windowMs = comboWindow();
+      const inCombo = now - lastSlash < windowMs;
+      combo = inCombo ? combo + 1 : 1;
+      lastSlash = now;
+
+      const amount = clickPower() * combo * multiplier;
+      earn(amount, point);
+
+      bestCombo = Math.max(bestCombo, combo);
+      bestComboEl.textContent = `x${bestCombo}`;
+      bumpCombo(inCombo);
+      playSlashSound();
+
+      clearTimeout(comboTimeout);
+      comboTimeout = setTimeout(() => { combo = 1; bumpCombo(false); }, windowMs);
+    }
+
+    function spawnPaper() {
+      const paper = document.createElement('div');
+      paper.className = 'floating-paper';
+      paper.style.left = `${Math.random() * 100}%`;
+      paper.style.animationDuration = `${5 + Math.random() * 3}s`;
+      paper.style.animationDelay = `${Math.random() * 2}s`;
+      arena.appendChild(paper);
+      paper.addEventListener('animationend', () => paper.remove());
+    }
+
+    function renderShop() {
+      shopList.innerHTML = '';
+      upgrades.forEach((u) => {
+        const cost = Math.floor(u.base * Math.pow(1.18, u.owned));
+        const card = document.createElement('div');
+        card.className = 'upgrade';
+        card.dataset.id = u.id;
+        card.dataset.cost = cost;
+        if (score >= cost) card.classList.add('affordable');
+        if (score < cost) card.classList.add('disabled');
+
+        const info = document.createElement('div');
+        info.className = 'upgrade-info';
+        const title = document.createElement('div');
+        title.className = 'upgrade-title';
+        title.textContent = `${u.name} (Lv.${u.owned})`;
+        const desc = document.createElement('div');
+        desc.className = 'upgrade-desc';
+        desc.textContent = u.desc;
+        info.append(title, desc);
+
+        const price = document.createElement('div');
+        price.className = 'price';
+        price.textContent = `${format(cost)} 切`;
+
+        const tag = document.createElement('div');
+        tag.className = 'pill' + (u.comboBonus || u.cpsMult ? ' rare' : '');
+        if (u.gain) tag.textContent = `+${u.gain} /s`; else if (u.clickMult) tag.textContent = `+${u.clickMult} click`; else tag.textContent = 'Combo';
+
+        card.append(info, price, tag);
+        card.addEventListener('click', () => {
+          if (score < cost) return;
+          score -= cost;
+          u.owned += 1;
+          prestigeStacks += u.id === 'bell' ? 1 : 0;
+          updateStatsUI();
+          renderShop();
+        });
+        shopList.appendChild(card);
+      });
+    }
+
+    function refreshShopAffordability() {
+      [...shopList.children].forEach((card) => {
+        const id = card.dataset.id;
+        const upgrade = upgrades.find((u) => u.id === id);
+        const cost = Math.floor(upgrade.base * Math.pow(1.18, upgrade.owned));
+        card.dataset.cost = cost;
+        card.querySelector('.price').textContent = `${format(cost)} 切`;
+        card.querySelector('.upgrade-title').textContent = `${upgrade.name} (Lv.${upgrade.owned})`;
+        card.classList.toggle('affordable', score >= cost);
+        card.classList.toggle('disabled', score < cost);
+      });
+    }
+
+    function startAutomation() {
+      setInterval(() => {
+        const cps = automationRate();
+        if (cps <= 0) return;
+        earn(cps / 10);
+        updateStatsUI();
+        refreshShopAffordability();
+      }, 100);
+    }
+
+    let activeStroke = null;
+
+    function getPoint(e) {
+      const rect = arena.getBoundingClientRect();
+      return {
+        x: (e.touches?.[0]?.clientX || e.clientX) - rect.left,
+        y: (e.touches?.[0]?.clientY || e.clientY) - rect.top,
+      };
+    }
+
+    function centerHit(point) {
+      const arenaRect = arena.getBoundingClientRect();
+      const charmRect = charm.getBoundingClientRect();
+      const center = {
+        x: charmRect.left - arenaRect.left + charmRect.width / 2,
+        y: charmRect.top - arenaRect.top + charmRect.height / 2,
+      };
+      const radius = Math.min(charmRect.width, charmRect.height) * 0.26;
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+      return Math.hypot(dx, dy) <= radius;
+    }
+
+    function crossesCenter(p1, p2) {
+      if (!p1 || !p2) return false;
+      const arenaRect = arena.getBoundingClientRect();
+      const charmRect = charm.getBoundingClientRect();
+      const center = {
+        x: charmRect.left - arenaRect.left + charmRect.width / 2,
+        y: charmRect.top - arenaRect.top + charmRect.height / 2,
+      };
+      const radius = Math.min(charmRect.width, charmRect.height) * 0.26;
+
+      const vx = p2.x - p1.x;
+      const vy = p2.y - p1.y;
+      const wx = center.x - p1.x;
+      const wy = center.y - p1.y;
+      const c1 = vx * wx + vy * wy;
+      const c2 = vx * vx + vy * vy;
+      const t = Math.max(0, Math.min(1, c1 / (c2 || 1)));
+      const projx = p1.x + vx * t;
+      const projy = p1.y + vy * t;
+      const dist = Math.hypot(center.x - projx, center.y - projy);
+      return dist <= radius;
+    }
+
+    function handlePointerDown(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const point = getPoint(e);
+      const inside = centerHit(point);
+      activeStroke = {
+        id: e.pointerId ?? 'touch',
+        last: point,
+        inside,
+      };
+      charm.classList.add('pressed');
+      if (inside) {
+        registerSlice(point);
+      }
+    }
+
+    function handlePointerMove(e) {
+      if (!activeStroke || (e.pointerId ?? 'touch') !== activeStroke.id) return;
+      if (e.buttons === 0) return;
+      const point = getPoint(e);
+      const inside = centerHit(point);
+      const crossing = crossesCenter(activeStroke.last, point);
+      if (!activeStroke.inside && (inside || crossing)) {
+        registerSlice(point);
+      }
+      activeStroke.last = point;
+      activeStroke.inside = inside;
+    }
+
+    function handlePointerUp(e) {
+      if (activeStroke && (e.pointerId ?? 'touch') === activeStroke.id) {
+        activeStroke = null;
+      }
+      charm.classList.remove('pressed');
+    }
+
+    charm.addEventListener('pointerdown', handlePointerDown);
+    arena.addEventListener('pointerdown', handlePointerDown);
+    arena.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    function init() {
+      renderShop();
+      updateStatsUI();
+      updateComboMeter();
+      startAutomation();
+      setInterval(spawnPaper, 1100);
+    }
+
+    init();
+  </script>
+</body>
+</html>
