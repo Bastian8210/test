@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Local WebSocket Console",
+  "description": "Connect to ws://localhost:8765 and exchange messages with a modern glassy UI.",
+  "version": "1.0.0",
+  "action": {
+    "default_title": "WebSocket Console",
+    "default_popup": "popup.html"
+  }
+}
