@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebSocket Console</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="overlay">
+      <div class="title-group">
+        <div class="accent"></div>
+        <div>
+          <p class="eyebrow">Local bridge</p>
+          <h1>WebSocket Console</h1>
+        </div>
+      </div>
+      <div class="status" id="status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Connecting…</span>
+      </div>
+    </header>
+
+    <section class="panel glass">
+      <div class="field">
+        <label for="message" class="field-label">Message</label>
+        <div class="input-row">
+          <input id="message" type="text" placeholder="Type a payload to send" autocomplete="off" />
+          <button id="send" type="button">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel glass log-panel">
+      <div class="panel-header">
+        <p class="eyebrow">Traffic</p>
+        <div class="legend">
+          <span class="badge outbound">Sent</span>
+          <span class="badge inbound">Received</span>
+        </div>
+      </div>
+      <div id="log" class="log" role="log" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
