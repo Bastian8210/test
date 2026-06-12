@@ -418,6 +418,23 @@ body{
 #claim:active{transform:scale(.97)}
 #ticket .fine{font-size:10px;letter-spacing:.3em;color:#5d5d5d;text-transform:uppercase}
 
+/* ---------- lite mode: mobile GPU safety ----------
+   no blurs, no blend modes, no big shadows — the tunnel itself
+   is drawn on the FX canvas instead of CSS 3D layers */
+body.lite #noise,body.lite #scanlines{display:none}
+body.lite #flash,body.lite #tint{mix-blend-mode:normal}
+body.lite .laser{mix-blend-mode:normal;filter:none;box-shadow:none;opacity:.45;width:2px}
+body.lite .monolith{box-shadow:inset 0 0 0 2px rgba(255,255,255,.07)}
+body.lite .monolith::before{filter:none}
+body.lite .djbooth .box{box-shadow:none}
+body.lite .djbooth .dj{filter:none}
+body.lite #crowd{filter:none}
+body.lite .raver{box-shadow:none}
+body.lite #cav-logo{text-shadow:0 0 14px rgba(177,75,255,.85)}
+body.lite .slice{mix-blend-mode:normal;opacity:.5}
+body.lite .zone .card{backdrop-filter:none;box-shadow:none}
+body.lite #vignette{background:radial-gradient(120% 100% at 50% 45%,transparent 50%,rgba(0,0,0,.7) 100%)}
+
 @media (max-width:720px){
   .zone .card{margin:0 6vw;padding:26px;backdrop-filter:none}
   #cav-logo{top:12%}
@@ -548,6 +565,10 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
 /* mobile = lighter everything, so the GPU never chokes and the tab never crash-reloads */
 const MOBILE=matchMedia("(pointer:coarse)").matches||innerWidth<760;
+/* on mobile the tunnel is drawn on canvas (one GPU surface) instead of CSS 3D
+   (dozens of huge rasterized layers — the thing that crash-reloads phone tabs) */
+const CANVAS_TUNNEL=MOBILE;
+if(CANVAS_TUNNEL)document.body.classList.add("lite");
 
 /* seeded prng so the tunnel is the same on every visit */
 let _s=1337;const rnd=()=>(_s=(_s*16807)%2147483647)/2147483647;
@@ -574,7 +595,146 @@ const segs=[];
 const GRAFFITI=["GLITCH","NO EXIT","DYB UNDER BYEN","143 BPM","WE NEVER LEFT","BASS=LIFE","RAVE OR DIE","UNDERCITY","FØLG LYDEN","404 SURFACE NOT FOUND"];
 const SIGNS=[["ADGANG FORBUDT","UNAUTHORIZED PERSONNEL"],["HØJSPÆNDING","DANGER · HIGH VOLTAGE"],["TUNNEL B-7","SERVICE ACCESS ONLY"],["⚠ STRUCTURE UNSTABLE","DO NOT PROCEED"],["CCTV OFFLINE","YOU ARE NOT WATCHED"]];
 
+/* ----- canvas tunnel (mobile): same journey, one GPU surface ----- */
+const tdata=[];
+function buildTunnelData(){
+  _s=1337;tdata.length=0;
+  for(let i=0;i<NSEG;i++){
+    tdata.push({
+      ci:Math.pow(i/NSEG,1.6),
+      hue:[265,200,95][i%3],
+      light:rnd()<.8,dead:rnd()<.2,fseed:rnd()*10,
+      tape:rnd()<.55?{sd:rnd()<.5?-1:1,yf:.15+rnd()*.55}:null,
+      graf:rnd()<(.35+i/NSEG*.5)?{sd:rnd()<.5?-1:1,text:GRAFFITI[(rnd()*GRAFFITI.length)|0],yf:.05+rnd()*.5,size:26+rnd()*26+i*1.5,rot:rnd()*.22-.11}:null,
+      sign:rnd()<.45?{sd:rnd()<.5?-1:1,s:SIGNS[(rnd()*SIGNS.length)|0],yf:-.25-rnd()*.3,distort:i>NSEG*.55}:null,
+      puds:[{xf:rnd()*1.4-.7,r:26+rnd()*44},{xf:rnd()*1.4-.7,r:18+rnd()*30}],
+    });
+  }
+}
+const flickFn=(t,sd)=>(Math.sin(t*.011+sd*9)+Math.sin(t*.057+sd*3))>1.55?.12:1;
+function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
+  const F=340,K=.55;
+  const cx=W/2+mx*14+sx,cy=H*.48+my*9+sy;
+  const hw=W*.85,hh=H*.85;
+  const proj=d=>F/(F+Math.max(d,10)*K);
+  ctx2.save();
+  ctx2.globalAlpha=tunnelOp;
+  ctx2.fillStyle="#000";ctx2.fillRect(0,0,W,H);
+  /* the rave bleeding through the far end */
+  const eg=range(p,.4,.58);
+  if(eg>0){
+    const sE=proj((NSEG-2.2)*SEG-camZ),r=Math.max(hw*sE*.9,24);
+    const g=ctx2.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0,`rgba(255,255,255,${.85*eg})`);
+    g.addColorStop(.45,`rgba(177,75,255,${.55*eg})`);
+    g.addColorStop(1,"rgba(177,75,255,0)");
+    ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(cx,cy,r,0,7);ctx2.fill();
+  }
+  const quad=(a,b,c,d,fill)=>{ctx2.fillStyle=fill;ctx2.beginPath();ctx2.moveTo(a[0],a[1]);ctx2.lineTo(b[0],b[1]);ctx2.lineTo(c[0],c[1]);ctx2.lineTo(d[0],d[1]);ctx2.closePath();ctx2.fill();};
+  const i0=Math.max(0,Math.floor(camZ/SEG)),iMax=Math.min(NSEG-2,i0+8);
+  for(let i=iMax;i>=i0;i--){
+    const t=tdata[i];
+    const d1=i*SEG-camZ,d2=(i+1)*SEG-camZ;
+    if(d2<30)continue;
+    const s1=proj(d1),s2=proj(d2),sm=proj((d1+d2)/2);
+    const fa=clamp(((d1+d2)/2)/(SEG*5),0,.97);
+    const fl=t.light&&!t.dead?flickFn(now,t.fseed):0;
+    const lum=(1-fa)*(.55+.45*fl)*(1+pulse*.22);
+    const L1=cx-hw*s1,R1=cx+hw*s1,T1=cy-hh*s1,B1=cy+hh*s1;
+    const L2=cx-hw*s2,R2=cx+hw*s2,T2=cy-hh*s2,B2=cy+hh*s2;
+    const sh=(r,g,b)=>`rgb(${r*lum|0},${g*lum|0},${b*lum|0})`;
+    quad([L1,T1],[L2,T2],[L2,B2],[L1,B1],sh(54,54,57));   // left wall
+    quad([R1,T1],[R2,T2],[R2,B2],[R1,B1],sh(50,50,53));   // right wall
+    quad([L1,B1],[L2,B2],[R2,B2],[R1,B1],sh(22,22,25));   // floor
+    quad([L1,T1],[L2,T2],[R2,T2],[R1,T1],sh(16,16,17));   // ceiling
+    /* accent wash deepens with descent */
+    if(t.ci>.02){
+      const ac=`hsla(${t.hue},100%,60%,${(t.ci*.1*(1-fa)).toFixed(3)})`;
+      quad([L1,T1],[L2,T2],[L2,B2],[L1,B1],ac);
+      quad([R1,T1],[R2,T2],[R2,B2],[R1,B1],ac);
+      quad([L1,B1],[L2,B2],[R2,B2],[R1,B1],ac);
+    }
+    /* ring seam */
+    ctx2.strokeStyle=`rgba(0,0,0,${.5*(1-fa)})`;ctx2.lineWidth=Math.max(1,2*s1);
+    ctx2.strokeRect(L1,T1,R1-L1,B1-T1);
+    /* fluorescent tube + glow */
+    if(t.light){
+      const y=cy-hh*sm+Math.max(2,3*sm),w=hw*sm*.32;
+      if(fl>0){
+        const g=ctx2.createRadialGradient(cx,y,0,cx,y,hw*sm*.5);
+        g.addColorStop(0,`rgba(230,240,255,${(.2*fl*(.5+pulse)).toFixed(3)})`);
+        g.addColorStop(1,"rgba(230,240,255,0)");
+        ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(cx,y,hw*sm*.5,0,7);ctx2.fill();
+      }
+      ctx2.fillStyle=fl>0?`rgba(255,255,255,${fl*(1-fa)})`:"#222";
+      ctx2.fillRect(cx-w,y,w*2,Math.max(1.5,4*sm));
+    }
+    /* caution tape along a wall */
+    if(t.tape){
+      const sd=t.tape.sd,yk=t.tape.yf;
+      const x1=cx+sd*hw*s1,x2=cx+sd*hw*s2;
+      const y1=cy+hh*s1*yk,y2=cy+hh*s2*yk;
+      const th1=Math.max(2,13*s1),th2=Math.max(1.5,13*s2);
+      ctx2.save();
+      ctx2.beginPath();
+      ctx2.moveTo(x1,y1-th1);ctx2.lineTo(x2,y2-th2);ctx2.lineTo(x2,y2+th2);ctx2.lineTo(x1,y1+th1);
+      ctx2.closePath();
+      ctx2.fillStyle=`rgba(247,209,0,${(.9*(1-fa)).toFixed(3)})`;ctx2.fill();
+      ctx2.clip();
+      ctx2.strokeStyle="rgba(13,13,13,.95)";ctx2.lineWidth=th1*.8;
+      for(let u=0;u<=1;u+=.13){
+        const xm=lerp(x1,x2,u),ym=lerp(y1,y2,u),thm=lerp(th1,th2,u);
+        ctx2.beginPath();ctx2.moveTo(xm-thm,ym-thm*1.3);ctx2.lineTo(xm+thm,ym+thm*1.3);ctx2.stroke();
+      }
+      ctx2.restore();
+    }
+    /* graffiti on the wall, perspective-sheared */
+    if(t.graf&&fa<.92){
+      const g=t.graf,sd=g.sd;
+      ctx2.save();
+      ctx2.translate(cx+sd*hw*sm*.9,cy+hh*sm*g.yf);
+      ctx2.transform(1,sd*-.28,0,1,0,0);
+      ctx2.rotate(g.rot);
+      ctx2.font=`900 ${Math.max(6,g.size*sm*1.6)|0}px "Arial Black",Impact,sans-serif`;
+      ctx2.textAlign=sd<0?"left":"right";
+      ctx2.fillStyle="rgba(0,0,0,.6)";ctx2.fillText(g.text,2,2);
+      ctx2.fillStyle=`hsla(${t.hue},100%,62%,${((.3+t.ci*.7)*(1-fa)).toFixed(3)})`;
+      ctx2.fillText(g.text,0,0);
+      ctx2.restore();
+    }
+    /* warning sign */
+    if(t.sign&&fa<.92){
+      const sg=t.sign,sd=sg.sd;
+      ctx2.save();
+      ctx2.translate(cx+sd*hw*sm*.9,cy+hh*sm*sg.yf);
+      ctx2.transform(1,sd*-.28,0,1,0,0);
+      if(sg.distort)ctx2.transform(1,0,Math.sin(now*.02)*.25,1,0,0);
+      const w=150*sm,h=64*sm;
+      ctx2.globalAlpha=tunnelOp*(1-fa);
+      ctx2.fillStyle="#0a0a0a";ctx2.fillRect(sd<0?0:-w,-h/2,w,h);
+      ctx2.fillStyle="#f7d100";ctx2.fillRect((sd<0?0:-w)+3*sm,-h/2+3*sm,w-6*sm,h-6*sm);
+      ctx2.fillStyle="#0a0a0a";ctx2.textAlign="center";
+      ctx2.font=`900 ${Math.max(5,15*sm)|0}px "Arial Black",Impact,sans-serif`;
+      ctx2.fillText(sg.s[0],(sd<0?w/2:-w/2),0);
+      ctx2.font=`700 ${Math.max(4,8*sm)|0}px monospace`;
+      ctx2.fillText(sg.s[1],(sd<0?w/2:-w/2),12*sm);
+      ctx2.restore();
+      ctx2.globalAlpha=tunnelOp;
+    }
+    /* wet puddles catching the light pulse */
+    for(const pu of t.puds){
+      const px=cx+pu.xf*hw*sm*.8,py=cy+hh*sm*.96;
+      const a=(1-fa)*(.05+pulse*t.ci*.5+fl*.04);
+      if(a<=.01)continue;
+      ctx2.fillStyle=`hsla(${t.hue},80%,80%,${a.toFixed(3)})`;
+      ctx2.beginPath();ctx2.ellipse(px,py,pu.r*sm,pu.r*sm*.3,0,0,7);ctx2.fill();
+    }
+  }
+  ctx2.restore();
+}
+
 function buildTunnel(){
+  if(CANVAS_TUNNEL){buildTunnelData();return;}
   _s=1337; // reset seed so the tunnel layout is stable across rebuilds
   world.innerHTML="";segs.length=0;
   TW=Math.min(1300,Math.max(760,innerWidth*1.05));
@@ -695,8 +855,9 @@ function initFloaters(){
   });
 }
 let lastSpark=0,lastSteam=0;
-function drawFx(now,p,pulse){
+function drawFx(now,p,pulse,camZ,tunnelOp,sx,sy){
   ctx2.clearRect(0,0,W,H);
+  if(CANVAS_TUNNEL&&tunnelOp>0)drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy);
   const inTunnel=p>.05&&p<.6, glitchI=range(p,.46,.58)*(1-range(p,.6,.66));
   if(inTunnel&&!REDUCED){
     if(now-lastSpark>1400+Math.random()*2200){lastSpark=now;spawnSpark();}
@@ -889,22 +1050,21 @@ function frame(now){
   const glitchI=range(p,.46,.58)*(1-range(p,.6,.66));
   const shake=REDUCED?0:pulse*5+glitchI*7;
   const sx=(Math.random()-.5)*shake,sy=(Math.random()-.5)*shake;
-  world.style.transform=`translate3d(${sx}px,${sy}px,${camZ}px)`;
-  tilt.style.transform=`rotateY(${mx*-2}deg) rotateX(${my*1.4}deg)`;
-
-  /* per-segment fog + culling (shorter draw distance on mobile) */
-  const VIEW=MOBILE?5.5:9,FOGD=MOBILE?4.5:7;
-  for(const s of segs){
-    const dist=s.z-camZ;
-    if(dist<-SEG*1.2||dist>SEG*VIEW){s.el.style.visibility="hidden";continue;}
-    s.el.style.visibility="visible";
-    s.el.style.setProperty("--fog",clamp(dist/(SEG*FOGD),0,.97).toFixed(3));
-  }
-
-  /* tunnel → cavern crossfade */
   const tunnelOp=1-range(p,.56,.645);
-  world.style.opacity=tunnelOp;
-  world.style.display=tunnelOp<=0?"none":"";
+  if(!CANVAS_TUNNEL){
+    world.style.transform=`translate3d(${sx}px,${sy}px,${camZ}px)`;
+    tilt.style.transform=`rotateY(${mx*-2}deg) rotateX(${my*1.4}deg)`;
+    /* per-segment fog + culling */
+    for(const s of segs){
+      const dist=s.z-camZ;
+      if(dist<-SEG*1.2||dist>SEG*9){s.el.style.visibility="hidden";continue;}
+      s.el.style.visibility="visible";
+      s.el.style.setProperty("--fog",clamp(dist/(SEG*7),0,.97).toFixed(3));
+    }
+    /* tunnel → cavern crossfade */
+    world.style.opacity=tunnelOp;
+    world.style.display=tunnelOp<=0?"none":"";
+  }
   const cavIn=range(p,.585,.68),cavOut=range(p,.965,1);
   cavern.style.opacity=(cavIn*(1-cavOut*.55)).toFixed(3);
   if(cavIn>0){
@@ -944,7 +1104,7 @@ function frame(now){
 
   hud(p);
   audio.update(p);
-  drawFx(now,p,pulse);
+  drawFx(now,p,pulse,camZ,tunnelOp,sx,sy);
   requestAnimationFrame(frame);
 }
 
