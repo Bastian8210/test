@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>GLITCH — Beneath Aarhus</title>
+<meta name="description" content="A forbidden descent into GLITCH. An underground rave beneath Aarhus that shouldn't exist.">
+<style>
+/* ============================================================
+   GLITCH — DESCENT INTO THE UNDERCITY
+   Hazard Yellow / Matte Black / Concrete Grey / White Strobe
+   Accents: Neon Purple / Electric Blue / Acid Green
+   ============================================================ */
+:root{
+  --hazard:#f7d100;
+  --black:#0a0a0a;
+  --concrete:#3a3a3c;
+  --purple:#b14bff;
+  --blue:#2fb8ff;
+  --acid:#9dff2f;
+  --pulse:0;        /* 0..1 kick envelope, set by JS         */
+  --depth:0;        /* 0..1 journey progress, set by JS      */
+  --fontstack:"Arial Black","Archivo Black",Impact,sans-serif;
+  --mono:"Courier New",ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:auto}
+body{
+  background:#000;
+  color:#e8e8e8;
+  font-family:var(--mono);
+  overflow-x:hidden;
+}
+::selection{background:var(--hazard);color:#000}
+
+/* ---------- scroll driver ---------- */
+#scroll-space{height:1600vh;position:relative;z-index:0}
+
+/* ---------- fixed stage ---------- */
+#stage{
+  position:fixed;inset:0;overflow:hidden;
+  background:#000;
+  perspective:700px;
+  perspective-origin:50% 48%;
+}
+#tilt{position:absolute;inset:0;transform-style:preserve-3d}
+#world{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+
+/* ---------- tunnel segments ---------- */
+.seg{
+  position:absolute;left:50%;top:50%;
+  transform-style:preserve-3d;
+  --fog:0;--ci:0;--h:265;
+}
+.plane{position:absolute;backface-visibility:hidden;overflow:hidden}
+.plane .fogv{
+  position:absolute;inset:0;background:#000;
+  opacity:var(--fog);pointer-events:none;z-index:9;
+}
+/* concrete walls */
+.wall{
+  background:
+    radial-gradient(120% 60% at 30% 20%, rgba(255,255,255,.045), transparent 60%),
+    radial-gradient(90% 50% at 70% 80%, rgba(0,0,0,.5), transparent 60%),
+    linear-gradient(180deg,#2e2e30 0%,#262628 35%,#1d1d1f 70%,#141415 100%);
+  box-shadow:inset 0 0 80px rgba(0,0,0,.7);
+}
+.wall::before{ /* panel seams */
+  content:"";position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 118px, rgba(0,0,0,.45) 118px 121px),
+    repeating-linear-gradient(0deg, transparent 0 160px, rgba(0,0,0,.35) 160px 162px);
+}
+.wall::after{ /* damp stains + accent wash deeper down */
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(40% 70% at 15% 100%, rgba(0,0,0,.55), transparent 70%),
+    radial-gradient(50% 80% at 85% 100%, hsla(var(--h),100%,60%,calc(var(--ci)*.16)), transparent 70%);
+}
+.floor{
+  background:
+    radial-gradient(28% 22% at 30% 40%, rgba(160,190,210,.10), transparent 70%),
+    radial-gradient(20% 16% at 68% 70%, rgba(160,190,210,.08), transparent 70%),
+    radial-gradient(34% 26% at 50% 20%, hsla(var(--h),100%,65%,calc(var(--ci)*.13)), transparent 75%),
+    linear-gradient(180deg,#101011,#0a0a0b);
+}
+.floor::before{ /* wet sheen reacting to the light pulse */
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(30% 24% at 30% 40%, hsla(var(--h),100%,75%,.35), transparent 70%),
+    radial-gradient(22% 18% at 68% 70%, rgba(255,255,255,.25), transparent 70%);
+  opacity:calc(var(--pulse)*var(--ci)*.9 + .05);
+  mix-blend-mode:screen;
+}
+.ceil{
+  background:
+    repeating-linear-gradient(to right,
+      #0c0c0d 0 26px, #161617 26px 34px, #0c0c0d 34px 60px,
+      #1a1a1c 60px 70px, #0c0c0d 70px 140px),
+    linear-gradient(180deg,#0e0e0f,#080809);
+}
+/* fluorescent tube */
+.tube{
+  position:absolute;left:20%;right:20%;top:46%;height:8px;border-radius:4px;
+  background:#fff;
+  box-shadow:0 0 18px 4px rgba(255,255,255,.85),0 0 80px 30px rgba(220,235,255,.35);
+  animation:flick 7s steps(1) infinite;
+}
+.tube.dead{background:#222;box-shadow:none;animation:none}
+.tube .glow{
+  position:absolute;inset:-30px -40px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(255,255,255,.5),transparent);
+  opacity:calc(.25 + var(--pulse)*.75);
+}
+@keyframes flick{
+  0%,100%{opacity:1} 7%{opacity:.2} 8%{opacity:1} 9%{opacity:.4} 10%{opacity:1}
+  43%{opacity:1} 44%{opacity:.1} 46%{opacity:1}
+  71%{opacity:1} 72%{opacity:.35} 73%{opacity:1} 74%{opacity:.1} 75%{opacity:1}
+}
+/* caution tape */
+.tape{
+  position:absolute;left:-4%;right:-4%;height:26px;
+  background:repeating-linear-gradient(45deg,var(--hazard) 0 18px,#0d0d0d 18px 36px);
+  box-shadow:0 2px 8px rgba(0,0,0,.8);
+  opacity:.92;
+}
+/* graffiti */
+.graf{
+  position:absolute;font-family:var(--fontstack);font-weight:900;
+  letter-spacing:.04em;white-space:nowrap;
+  color:hsla(var(--h),100%,62%,calc(.25 + var(--ci)*.75));
+  text-shadow:0 0 14px hsla(var(--h),100%,60%,calc(var(--ci)*.9)),2px 2px 0 rgba(0,0,0,.7);
+  transform-origin:left center;
+}
+.graf.drip::after{
+  content:"";position:absolute;left:8%;top:90%;width:3px;height:1.1em;
+  background:linear-gradient(hsla(var(--h),100%,62%,.6),transparent);
+}
+/* warning signs */
+.sign{
+  position:absolute;padding:10px 14px;background:var(--hazard);color:#0a0a0a;
+  font-family:var(--fontstack);font-size:15px;letter-spacing:.08em;
+  border:3px solid #0a0a0a;box-shadow:0 4px 14px rgba(0,0,0,.7);
+  text-align:center;line-height:1.25;
+}
+.sign small{display:block;font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.15em}
+.sign.rust{filter:saturate(.6) brightness(.8)}
+.sign.distort{animation:signwarp 1.3s steps(2) infinite}
+@keyframes signwarp{
+  0%,100%{transform:skewX(0) translateX(0)}
+  25%{transform:skewX(-6deg) translateX(-3px)}
+  50%{transform:skewX(3deg) translateX(2px) scaleY(1.05)}
+  75%{transform:skewX(-2deg) translateX(-1px)}
+}
+/* pipes on walls */
+.pipe{
+  position:absolute;left:0;right:0;height:18px;border-radius:9px;
+  background:linear-gradient(180deg,#4a4a4e,#222 60%,#39393d);
+  box-shadow:0 4px 10px rgba(0,0,0,.7);
+}
+.pipe::before{content:"";position:absolute;left:12%;top:-4px;width:10px;height:26px;background:#2b2b2e;border-radius:3px}
+.pipe::after{content:"";position:absolute;right:18%;top:-4px;width:10px;height:26px;background:#2b2b2e;border-radius:3px}
+/* hanging cable */
+.cable{
+  position:absolute;border:3px solid #161617;border-top:none;
+  border-radius:0 0 50% 50%/0 0 100% 100%;
+  border-color:transparent transparent #1c1c1e transparent;
+}
+/* broken cctv */
+.cctv{
+  position:absolute;width:46px;height:26px;background:#222;border-radius:4px;
+  transform:rotate(18deg);box-shadow:0 3px 8px rgba(0,0,0,.8);
+}
+.cctv::before{content:"";position:absolute;right:-8px;top:7px;width:12px;height:12px;background:#111;border-radius:50%;border:2px solid #333}
+.cctv::after{
+  content:"";position:absolute;left:6px;top:9px;width:7px;height:7px;border-radius:50%;
+  background:#ff2b2b;animation:cam 2.4s steps(1) infinite;
+}
+@keyframes cam{0%,18%,100%{opacity:0}10%,14%{opacity:1}}
+/* construction barrier */
+.barrier{
+  position:absolute;width:200px;height:30px;
+  background:repeating-linear-gradient(-45deg,var(--hazard) 0 16px,#101010 16px 32px);
+  border:3px solid #0a0a0a;box-shadow:0 6px 12px rgba(0,0,0,.8);
+}
+.barrier::before,.barrier::after{
+  content:"";position:absolute;top:100%;width:8px;height:46px;background:#1a1a1b;
+}
+.barrier::before{left:14px}.barrier::after{right:14px}
+
+/* ---------- fx canvas ---------- */
+#fx{position:absolute;inset:0;pointer-events:none;z-index:30}
+
+/* ---------- cavern (the reveal) ---------- */
+#cavern{position:absolute;inset:0;opacity:0;pointer-events:none;z-index:20;overflow:hidden}
+#cavern-inner{position:absolute;inset:-8%;will-change:transform}
+.cav-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(177,75,255,.22), transparent 55%),
+    radial-gradient(90% 70% at 20% 100%, rgba(47,184,255,.14), transparent 60%),
+    radial-gradient(90% 70% at 80% 100%, rgba(157,255,47,.10), transparent 60%),
+    radial-gradient(140% 100% at 50% 0%, #000 30%, transparent 80%),
+    linear-gradient(180deg,#020203 0%,#08070c 45%,#0d0a14 100%);
+}
+.cav-rock{ /* cavern silhouette edges */
+  position:absolute;inset:0;
+  background:
+    radial-gradient(60% 100% at -8% 50%, #000 38%, transparent 60%),
+    radial-gradient(60% 100% at 108% 50%, #000 38%, transparent 60%),
+    radial-gradient(120% 50% at 50% -18%, #000 45%, transparent 75%);
+}
+.laser{
+  position:absolute;top:-12%;width:3px;height:140%;
+  transform-origin:50% 0;mix-blend-mode:screen;opacity:.8;
+  filter:blur(.5px);
+}
+.laser.b{background:linear-gradient(rgba(47,184,255,.95),transparent 85%);box-shadow:0 0 14px rgba(47,184,255,.8)}
+.laser.p{background:linear-gradient(rgba(177,75,255,.95),transparent 85%);box-shadow:0 0 14px rgba(177,75,255,.8)}
+.laser.g{background:linear-gradient(rgba(157,255,47,.9),transparent 85%);box-shadow:0 0 14px rgba(157,255,47,.7)}
+.laser{animation:sweep 5.5s ease-in-out infinite alternate}
+@keyframes sweep{from{transform:rotate(var(--a0))}to{transform:rotate(var(--a1))}}
+.monolith{
+  position:absolute;bottom:16%;width:6.5%;height:42%;border-radius:6px;
+  background:linear-gradient(180deg,#0c0c10,#121218);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.04),
+    0 0 30px var(--mc),
+    inset 0 -40px 60px -30px var(--mc);
+  animation:mono 6s ease-in-out infinite;
+}
+.monolith::before{
+  content:"";position:absolute;inset:8% 30%;
+  background:repeating-linear-gradient(180deg,var(--mc) 0 6px,transparent 6px 26px);
+  opacity:calc(.35 + var(--pulse)*.65);filter:blur(1px);
+}
+@keyframes mono{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.djbooth{
+  position:absolute;left:50%;top:24%;width:300px;height:120px;margin-left:-150px;
+  animation:sway 9s ease-in-out infinite;
+}
+.djbooth .cableL,.djbooth .cableR{
+  position:absolute;top:-220px;width:3px;height:220px;background:linear-gradient(#000,#2a2a2e);
+}
+.djbooth .cableL{left:36px;transform:rotate(7deg)}
+.djbooth .cableR{right:36px;transform:rotate(-7deg)}
+.djbooth .box{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,#101014,#1a1a22);
+  clip-path:polygon(8% 0,92% 0,100% 100%,0 100%);
+  box-shadow:0 0 40px rgba(177,75,255,.45),inset 0 0 0 2px rgba(255,255,255,.05);
+}
+.djbooth .box::before{ /* led face */
+  content:"";position:absolute;inset:55% 6% 8% 6%;
+  background:repeating-linear-gradient(90deg,var(--purple) 0 10px,var(--blue) 10px 20px,var(--acid) 20px 30px,transparent 30px 34px);
+  opacity:calc(.35 + var(--pulse)*.65);filter:blur(.5px);
+}
+.djbooth .dj{ /* silhouette */
+  position:absolute;left:50%;top:-44px;width:60px;height:48px;margin-left:-30px;
+  background:radial-gradient(circle at 50% 18%, #000 12px, transparent 13px),
+             linear-gradient(#000,#000);
+  clip-path:polygon(28% 35%,72% 35%,86% 100%,14% 100%);
+  filter:drop-shadow(0 0 8px rgba(177,75,255,.5));
+}
+@keyframes sway{0%,100%{transform:rotate(-1.2deg)}50%{transform:rotate(1.2deg)}}
+#crowd{position:absolute;left:-2%;right:-2%;bottom:0;height:24%;display:flex;align-items:flex-end;justify-content:space-around;filter:blur(1px)}
+.raver{
+  width:26px;background:#000;border-radius:12px 12px 0 0;position:relative;
+  animation:bounce 0.86s ease-in-out infinite;
+  box-shadow:0 0 18px rgba(0,0,0,.9);
+}
+.raver::before{ /* head */
+  content:"";position:absolute;left:50%;top:-16px;width:16px;height:16px;margin-left:-8px;
+  border-radius:50%;background:#000;
+}
+.raver.arms::after{ /* raised arm */
+  content:"";position:absolute;left:-7px;top:-10px;width:6px;height:26px;background:#000;
+  border-radius:3px;transform:rotate(28deg);
+}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+#cav-logo{
+  position:absolute;left:50%;top:9%;transform:translateX(-50%);
+  font-family:var(--fontstack);font-size:clamp(54px,11vw,160px);letter-spacing:.06em;
+  color:#fff;
+  text-shadow:0 0 30px rgba(177,75,255,.9),0 0 90px rgba(47,184,255,.6);
+}
+.glitchtxt{position:relative;display:inline-block}
+.glitchtxt::before,.glitchtxt::after{
+  content:attr(data-t);position:absolute;left:0;top:0;width:100%;overflow:hidden;
+}
+.glitchtxt::before{color:var(--blue);z-index:-1;animation:gl1 2.1s steps(2) infinite}
+.glitchtxt::after{color:var(--purple);z-index:-2;animation:gl2 1.7s steps(2) infinite}
+@keyframes gl1{
+  0%,86%,100%{transform:none;clip-path:inset(0 0 0 0)}
+  88%{transform:translate(-6px,2px);clip-path:inset(12% 0 64% 0)}
+  92%{transform:translate(5px,-2px);clip-path:inset(60% 0 8% 0)}
+  96%{transform:translate(-3px,1px);clip-path:inset(30% 0 40% 0)}
+}
+@keyframes gl2{
+  0%,80%,100%{transform:none;clip-path:inset(0 0 0 0)}
+  84%{transform:translate(6px,-3px);clip-path:inset(40% 0 30% 0)}
+  90%{transform:translate(-5px,3px);clip-path:inset(5% 0 80% 0)}
+  95%{transform:translate(3px,1px);clip-path:inset(70% 0 4% 0)}
+}
+
+/* ---------- overlays ---------- */
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:40;mix-blend-mode:screen}
+#tint{position:absolute;inset:0;opacity:0;pointer-events:none;z-index:25;mix-blend-mode:screen;transition:background .4s}
+#vignette{
+  position:absolute;inset:0;pointer-events:none;z-index:45;
+  background:radial-gradient(120% 100% at 50% 45%,transparent 45%,rgba(0,0,0,.78) 100%);
+}
+#scanlines{
+  position:absolute;inset:0;pointer-events:none;z-index:46;opacity:.18;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.5) 3px 4px);
+}
+#noise{
+  position:absolute;inset:0;pointer-events:none;z-index:47;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+#glitchveil{position:absolute;inset:0;pointer-events:none;z-index:48;opacity:0}
+#glitchveil .slice{
+  position:absolute;left:0;right:0;height:4%;
+  background:linear-gradient(90deg,rgba(177,75,255,.35),rgba(47,184,255,.35),rgba(157,255,47,.3));
+  mix-blend-mode:screen;animation:sl .9s steps(3) infinite;
+}
+@keyframes sl{
+  0%,100%{transform:translateX(0) scaleY(1)}
+  33%{transform:translateX(-4%) scaleY(1.6)}
+  66%{transform:translateX(3%) scaleY(.5)}
+}
+
+/* ---------- intro ---------- */
+#intro{
+  position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;gap:26px;
+  pointer-events:none;
+}
+#intro .loc{font-size:12px;letter-spacing:.5em;color:#777;text-transform:uppercase}
+#enter{
+  pointer-events:auto;cursor:pointer;background:none;border:none;
+  font-family:var(--fontstack);font-size:clamp(40px,9vw,110px);
+  letter-spacing:.08em;color:#f3f3f3;line-height:1;
+  text-shadow:0 0 22px rgba(255,255,255,.35);
+  animation:enterflick 4.4s steps(1) infinite;
+}
+#enter em{font-style:normal;color:var(--hazard);text-shadow:0 0 26px rgba(247,209,0,.6)}
+@keyframes enterflick{
+  0%,100%{opacity:1}6%{opacity:.25}7%{opacity:1}8%{opacity:.5}9%{opacity:1}
+  54%{opacity:1}55%{opacity:.15}57%{opacity:1}
+}
+#intro .hint{font-size:11px;letter-spacing:.4em;color:#888;text-transform:uppercase}
+#intro .arrow{
+  width:1px;height:46px;background:linear-gradient(#888,transparent);
+  animation:drop 1.6s ease-in-out infinite;
+}
+@keyframes drop{0%{transform:translateY(-8px);opacity:0}40%{opacity:1}100%{transform:translateY(10px);opacity:0}}
+
+/* ---------- HUD ---------- */
+#hud{
+  position:absolute;left:18px;bottom:16px;z-index:70;font-size:11px;
+  letter-spacing:.18em;color:#9a9a9a;text-transform:uppercase;line-height:1.9;
+  text-shadow:0 1px 2px #000;pointer-events:none;
+}
+#hud b{color:var(--hazard)}
+#sound{
+  position:absolute;right:18px;bottom:16px;z-index:70;cursor:pointer;
+  background:rgba(10,10,10,.7);color:#ddd;border:1px solid #3a3a3c;
+  font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+  padding:9px 14px;text-transform:uppercase;
+}
+#sound:hover{border-color:var(--hazard);color:var(--hazard)}
+#sound.on{border-color:var(--acid);color:var(--acid)}
+
+/* ---------- zone cards ---------- */
+.zone{
+  position:absolute;inset:0;z-index:55;display:flex;align-items:center;
+  pointer-events:none;opacity:0;
+}
+.zone .card{
+  margin-left:8vw;max-width:560px;padding:34px 38px;
+  background:rgba(6,6,8,.82);border:1px solid rgba(255,255,255,.08);
+  border-left:5px solid var(--zc);backdrop-filter:blur(6px);
+  box-shadow:0 0 60px rgba(0,0,0,.8),0 0 38px var(--zg);
+}
+.zone.right .card{margin-left:auto;margin-right:8vw;border-left:1px solid rgba(255,255,255,.08);border-right:5px solid var(--zc)}
+.zone .tag{font-size:10px;letter-spacing:.45em;color:var(--zc);text-transform:uppercase;margin-bottom:14px}
+.zone h2{
+  font-family:var(--fontstack);font-size:clamp(30px,5vw,54px);letter-spacing:.04em;
+  color:#fff;text-shadow:0 0 24px var(--zg);margin-bottom:16px;line-height:1.02;
+}
+.zone p{font-size:13.5px;line-height:1.8;color:#bdbdbd;letter-spacing:.04em}
+.zone .meta{margin-top:18px;font-size:11px;letter-spacing:.25em;color:var(--zc);text-transform:uppercase}
+
+/* ---------- ticket portal ---------- */
+#ticket{
+  position:absolute;inset:0;z-index:58;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;gap:22px;
+  opacity:0;pointer-events:none;padding:0 20px;
+}
+#ticket .tag{font-size:11px;letter-spacing:.55em;color:var(--hazard);text-transform:uppercase}
+#ticket h2{
+  font-family:var(--fontstack);font-size:clamp(38px,8vw,96px);letter-spacing:.05em;color:#fff;
+  text-shadow:0 0 36px rgba(247,209,0,.45);
+}
+#ticket p{max-width:520px;font-size:13px;line-height:1.9;color:#a9a9a9;letter-spacing:.06em}
+#claim{
+  cursor:pointer;margin-top:8px;padding:20px 54px;
+  font-family:var(--fontstack);font-size:18px;letter-spacing:.18em;
+  background:var(--hazard);color:#0a0a0a;border:3px solid #0a0a0a;
+  box-shadow:0 0 0 3px var(--hazard),0 0 44px rgba(247,209,0,.5);
+  text-transform:uppercase;
+  animation:claimpulse 1.2s ease-in-out infinite;
+}
+@keyframes claimpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+#claim:active{transform:scale(.97)}
+#ticket .fine{font-size:10px;letter-spacing:.3em;color:#5d5d5d;text-transform:uppercase}
+
+@media (max-width:720px){
+  .zone .card{margin:0 6vw;padding:26px}
+  #cav-logo{top:12%}
+  .djbooth{transform:scale(.7)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<div id="scroll-space" aria-hidden="true"></div>
+
+<div id="stage">
+  <div id="tilt"><div id="world"></div></div>
+
+  <!-- THE REVEAL -->
+  <div id="cavern">
+    <div id="cavern-inner">
+      <div class="cav-bg"></div>
+      <div class="laser b" style="left:18%;--a0:-24deg;--a1:14deg;animation-duration:4.6s"></div>
+      <div class="laser p" style="left:34%;--a0:18deg;--a1:-20deg;animation-duration:5.8s"></div>
+      <div class="laser g" style="left:50%;--a0:-12deg;--a1:12deg;animation-duration:3.9s"></div>
+      <div class="laser p" style="left:66%;--a0:-20deg;--a1:22deg;animation-duration:5.1s"></div>
+      <div class="laser b" style="left:82%;--a0:16deg;--a1:-18deg;animation-duration:4.2s"></div>
+      <div class="monolith" style="left:10%;--mc:rgba(47,184,255,.5);animation-delay:-1s"></div>
+      <div class="monolith" style="left:24%;--mc:rgba(177,75,255,.5);height:52%;animation-delay:-3s"></div>
+      <div class="monolith" style="right:24%;--mc:rgba(157,255,47,.4);height:48%;animation-delay:-2s"></div>
+      <div class="monolith" style="right:10%;--mc:rgba(177,75,255,.5);animation-delay:-4s"></div>
+      <div class="djbooth">
+        <div class="cableL"></div><div class="cableR"></div>
+        <div class="dj"></div><div class="box"></div>
+      </div>
+      <div id="cav-logo"><span class="glitchtxt" data-t="GLITCH">GLITCH</span></div>
+      <div id="crowd"></div>
+      <div class="cav-rock"></div>
+    </div>
+  </div>
+
+  <canvas id="fx"></canvas>
+
+  <!-- EVENT ZONES -->
+  <div class="zone" id="z-techno" style="--zc:var(--blue);--zg:rgba(47,184,255,.35)">
+    <div class="card">
+      <div class="tag">Zone 01 // Mainframe</div>
+      <h2>TECHNO DISTRICT</h2>
+      <p>Relentless 140&nbsp;BPM hammered into raw concrete. White strobes, black fog, zero phones. The district runs until the structure gives up — and it never does.</p>
+      <div class="meta">Capacity: classified · Dress code: black</div>
+    </div>
+  </div>
+  <div class="zone right" id="z-decks" style="--zc:var(--acid);--zg:rgba(157,255,47,.3)">
+    <div class="card">
+      <div class="tag">Zone 02 // The People's Booth</div>
+      <h2>OPEN DECKS</h2>
+      <p>No headliners. No egos. Chalk your name on the wall, plug in and play to whoever the tunnel drags in. Some of the best sets beneath Aarhus were played by people you've never heard of.</p>
+      <div class="meta">Sign-up: on-site only · 30 min slots</div>
+    </div>
+  </div>
+  <div class="zone" id="z-hard" style="--zc:var(--hazard);--zg:rgba(247,209,0,.32)">
+    <div class="card">
+      <div class="tag">Zone 03 // Structural Hazard</div>
+      <h2>HARDSTYLE ARENA</h2>
+      <p>Kicks engineered to crack foundations. The arena sits in the deepest chamber for a reason — the surface must never feel it. Earplugs are not a suggestion.</p>
+      <div class="meta">Warning: 150+ BPM · reverse bass detected</div>
+    </div>
+  </div>
+  <div class="zone right" id="z-psy" style="--zc:var(--purple);--zg:rgba(177,75,255,.35)">
+    <div class="card">
+      <div class="tag">Zone 04 // Subterranean Flora</div>
+      <h2>PSY FOREST CHAMBER</h2>
+      <p>A bioluminescent grotto grown in the dark: UV vines, breathing walls and a full-spectrum psytrance ritual that bends time until sunrise — not that you'll see one down here.</p>
+      <div class="meta">Spectrum: ultraviolet · Time: irrelevant</div>
+    </div>
+  </div>
+
+  <!-- TICKET PORTAL -->
+  <div id="ticket">
+    <div class="tag">Final Chamber // Access Control</div>
+    <h2>TICKET&nbsp;PORTAL</h2>
+    <p>You made it through the tunnel. The undercity has noted your descent. Entry codes are released in waves — location coordinates are revealed 24 hours before doors.</p>
+    <button id="claim" type="button">Claim Entry</button>
+    <div class="fine">Tell no one · No cameras · GLITCH does not exist</div>
+  </div>
+
+  <!-- overlays -->
+  <div id="tint"></div>
+  <div id="flash"></div>
+  <div id="glitchveil">
+    <div class="slice" style="top:12%"></div>
+    <div class="slice" style="top:31%;animation-delay:.2s"></div>
+    <div class="slice" style="top:52%;animation-delay:.45s"></div>
+    <div class="slice" style="top:70%;animation-delay:.1s"></div>
+    <div class="slice" style="top:86%;animation-delay:.3s"></div>
+  </div>
+  <div id="vignette"></div>
+  <div id="scanlines"></div>
+  <div id="noise"></div>
+
+  <!-- intro -->
+  <div id="intro">
+    <div class="loc">Aarhus C · 02:47 · somewhere you shouldn't be</div>
+    <button id="enter" type="button">ENTER <em>GLITCH</em></button>
+    <div class="hint">Scroll to descend</div>
+    <div class="arrow"></div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-depth"><b>DEPTH</b> 0M · SURFACE</div>
+    <div id="hud-status">SIGNAL: OK</div>
+  </div>
+  <button id="sound" type="button">▶ Sound: Off</button>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   GLITCH — descent engine
+   scroll → camera Z through a 3D tunnel → glitch dissolution
+   → cavern reveal → event zones → ticket portal.
+   All audio is synthesized (Web Audio), no assets required.
+   ============================================================ */
+
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const range=(p,a,b)=>clamp((p-a)/(b-a),0,1);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* seeded prng so the tunnel is the same on every visit */
+let _s=1337;const rnd=()=>(_s=(_s*16807)%2147483647)/2147483647;
+
+const stage=document.getElementById("stage");
+const tilt=document.getElementById("tilt");
+const world=document.getElementById("world");
+const cavern=document.getElementById("cavern");
+const cavInner=document.getElementById("cavern-inner");
+const intro=document.getElementById("intro");
+const flash=document.getElementById("flash");
+const tintEl=document.getElementById("tint");
+const veil=document.getElementById("glitchveil");
+const hudDepth=document.getElementById("hud-depth");
+const hudStatus=document.getElementById("hud-status");
+const ticket=document.getElementById("ticket");
+
+/* ---------------- tunnel construction ---------------- */
+const SEG=620;          // segment depth (px)
+const NSEG=26;
+let TW,TH;              // tunnel width / height
+const segs=[];
+
+const GRAFFITI=["GLITCH","NO EXIT","DYB UNDER BYEN","143 BPM","WE NEVER LEFT","BASS=LIFE","RAVE OR DIE","UNDERCITY","FØLG LYDEN","404 SURFACE NOT FOUND"];
+const SIGNS=[["ADGANG FORBUDT","UNAUTHORIZED PERSONNEL"],["HØJSPÆNDING","DANGER · HIGH VOLTAGE"],["TUNNEL B-7","SERVICE ACCESS ONLY"],["⚠ STRUCTURE UNSTABLE","DO NOT PROCEED"],["CCTV OFFLINE","YOU ARE NOT WATCHED"]];
+
+function buildTunnel(){
+  _s=1337; // reset seed so the tunnel layout is stable across rebuilds
+  world.innerHTML="";segs.length=0;
+  TW=Math.min(1300,Math.max(760,innerWidth*1.05));
+  TH=Math.max(700,innerHeight*1.12);
+  const halfW=TW/2,halfH=TH/2;
+  for(let i=0;i<NSEG;i++){
+    const z=-(i*SEG)-SEG/2;
+    const seg=document.createElement("div");
+    seg.className="seg";
+    const ci=Math.pow(i/NSEG,1.6);               // accent intensity grows with depth
+    const hue=[265,200,95][i%3];                  // purple / blue / acid rotation
+    seg.style.cssText=`transform:translate3d(-50%,-50%,${z}px);--ci:${ci.toFixed(3)};--h:${hue}`;
+
+    const plane=(cls,w,h,tf)=>{
+      const p=document.createElement("div");
+      p.className="plane "+cls;
+      p.style.cssText=`width:${w}px;height:${h}px;left:${-w/2}px;top:${-h/2}px;transform:${tf}`;
+      const fog=document.createElement("div");fog.className="fogv";p.appendChild(fog);
+      seg.appendChild(p);return p;
+    };
+    const L=plane("wall",SEG,TH,`translateX(${-halfW}px) rotateY(90deg)`);
+    const R=plane("wall",SEG,TH,`translateX(${halfW}px) rotateY(-90deg)`);
+    const F=plane("floor",TW,SEG,`translateY(${halfH}px) rotateX(90deg)`);
+    const C=plane("ceil",TW,SEG,`translateY(${-halfH}px) rotateX(-90deg)`);
+
+    decorate(seg,L,R,F,C,i);
+    world.appendChild(seg);
+    segs.push({el:seg,z:i*SEG});
+  }
+}
+
+function decorate(seg,L,R,F,C,i){
+  const add=(parent,html)=>{const d=document.createElement("div");d.innerHTML=html;const el=d.firstElementChild;parent.insertBefore(el,parent.firstChild);return el;};
+  /* fluorescent tube on most segments; some are dead */
+  const tube=add(C,`<div class="tube${rnd()<.22?" dead":""}" style="animation-delay:${(-rnd()*7).toFixed(2)}s"><div class="glow"></div></div>`);
+  if(i===0)tube.classList.remove("dead");
+  /* caution tape */
+  if(rnd()<.55){
+    const w=rnd()<.5?L:R;
+    add(w,`<div class="tape" style="top:${30+rnd()*45}%;transform:rotate(${(rnd()*8-4).toFixed(1)}deg)"></div>`);
+  }
+  /* pipes */
+  if(rnd()<.6){
+    const w=rnd()<.5?L:R;
+    add(w,`<div class="pipe" style="top:${12+rnd()*18}%"></div>`);
+    if(rnd()<.4)add(w,`<div class="pipe" style="top:${34+rnd()*10}%;height:12px"></div>`);
+  }
+  /* graffiti — bigger, brighter and more alive the deeper you go */
+  if(rnd()<(.35+i/NSEG*.5)){
+    const w=rnd()<.5?L:R;
+    const txt=GRAFFITI[(rnd()*GRAFFITI.length)|0];
+    const size=22+rnd()*30+i*1.4;
+    add(w,`<div class="graf${rnd()<.5?" drip":""}" style="left:${5+rnd()*30}%;top:${40+rnd()*32}%;font-size:${size|0}px;transform:rotate(${(rnd()*14-7).toFixed(1)}deg)">${txt}</div>`);
+  }
+  /* warning signs — distorted in the deep half */
+  if(rnd()<.42){
+    const w=rnd()<.5?L:R;
+    const s=SIGNS[(rnd()*SIGNS.length)|0];
+    const cls=i>NSEG*.55?"sign distort":(rnd()<.5?"sign rust":"sign");
+    add(w,`<div class="${cls}" style="left:${15+rnd()*45}%;top:${24+rnd()*30}%;transform:rotate(${(rnd()*6-3).toFixed(1)}deg)">${s[0]}<small>${s[1]}</small></div>`);
+  }
+  /* hanging cables from the ceiling line of the walls */
+  if(rnd()<.5){
+    const w=rnd()<.5?L:R;
+    add(w,`<div class="cable" style="left:${10+rnd()*60}%;top:0;width:${80+rnd()*140|0}px;height:${40+rnd()*70|0}px"></div>`);
+  }
+  /* broken cctv */
+  if(rnd()<.3)add(rnd()<.5?L:R,`<div class="cctv" style="left:${60+rnd()*25}%;top:${6+rnd()*8}%"></div>`);
+  /* construction barrier on the floor */
+  if(rnd()<.3)add(F,`<div class="barrier" style="left:${10+rnd()*55}%;top:${20+rnd()*40}%;transform:rotate(${(rnd()*30-15).toFixed(0)}deg)"></div>`);
+}
+
+/* ---------------- crowd silhouettes ---------------- */
+(function buildCrowd(){
+  const c=document.getElementById("crowd");
+  for(let i=0;i<42;i++){
+    const r=document.createElement("div");
+    r.className="raver"+(Math.random()<.4?" arms":"");
+    r.style.height=(46+Math.random()*52|0)+"px";
+    r.style.animationDelay=(-Math.random()).toFixed(2)+"s";
+    r.style.animationDuration=(.78+Math.random()*.3).toFixed(2)+"s";
+    c.appendChild(r);
+  }
+})();
+
+/* ---------------- FX canvas (sparks / steam / glitch bits / floating lights) ---------------- */
+const fx=document.getElementById("fx"),ctx2=fx.getContext("2d");
+let W,H,DPR;
+function sizeFx(){
+  DPR=Math.min(1.5,devicePixelRatio||1);
+  W=innerWidth;H=innerHeight;
+  fx.width=W*DPR;fx.height=H*DPR;
+  fx.style.width=W+"px";fx.style.height=H+"px";
+  ctx2.setTransform(DPR,0,0,DPR,0,0);
+}
+const parts=[];
+function spawnSpark(){
+  const x=Math.random()*W,y=H*(.1+Math.random()*.4);
+  const n=8+Math.random()*12|0;
+  for(let k=0;k<n;k++)parts.push({t:"spark",x,y,vx:(Math.random()-.5)*5,vy:Math.random()*3+1,life:1,d:.04+Math.random()*.05,r:1+Math.random()*1.5});
+}
+function spawnSteam(){
+  parts.push({t:"steam",x:Math.random()<.5?W*.12:W*.88,y:H*.95,vx:(Math.random()-.5)*.3,vy:-.5-Math.random()*.5,life:1,d:.006,r:18+Math.random()*30});
+}
+function spawnGlitchBit(intens){
+  parts.push({t:"bit",x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*2,vy:(Math.random()-.5)*2,
+    life:1,d:.05+Math.random()*.08,r:2+Math.random()*8*intens,
+    c:["177,75,255","47,184,255","157,255,47"][Math.random()*3|0]});
+}
+const floaters=[];
+function initFloaters(){
+  floaters.length=0;
+  const n=Math.min(150,(W*H)/9000|0);
+  for(let i=0;i<n;i++)floaters.push({
+    x:Math.random()*W,y:Math.random()*H*.85,r:.6+Math.random()*2.2,
+    ph:Math.random()*Math.PI*2,sp:.2+Math.random()*.6,
+    c:["255,255,255","177,75,255","47,184,255","157,255,47"][Math.random()*4|0],
+  });
+}
+let lastSpark=0,lastSteam=0;
+function drawFx(now,p,pulse){
+  ctx2.clearRect(0,0,W,H);
+  const inTunnel=p>.05&&p<.6, glitchI=range(p,.46,.58)*(1-range(p,.6,.66));
+  if(inTunnel&&!REDUCED){
+    if(now-lastSpark>1400+Math.random()*2200){lastSpark=now;spawnSpark();}
+    if(now-lastSteam>400){lastSteam=now;spawnSteam();}
+  }
+  if(glitchI>0&&!REDUCED)for(let k=0;k<glitchI*6;k++)spawnGlitchBit(glitchI);
+
+  ctx2.globalCompositeOperation="lighter";
+  for(let i=parts.length-1;i>=0;i--){
+    const q=parts[i];
+    q.x+=q.vx;q.y+=q.vy;q.life-=q.d;
+    if(q.t==="spark")q.vy+=.15;
+    if(q.life<=0){parts.splice(i,1);continue;}
+    if(q.t==="spark"){
+      ctx2.fillStyle=`rgba(255,${190+(q.life*60|0)},120,${q.life})`;
+      ctx2.fillRect(q.x,q.y,q.r,q.r);
+    }else if(q.t==="steam"){
+      const g=ctx2.createRadialGradient(q.x,q.y,0,q.x,q.y,q.r);
+      g.addColorStop(0,`rgba(200,200,210,${q.life*.06})`);g.addColorStop(1,"rgba(200,200,210,0)");
+      ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(q.x,q.y,q.r,0,7);ctx2.fill();
+      q.r+=.3;
+    }else{ // digital bit
+      ctx2.fillStyle=`rgba(${q.c},${q.life*.9})`;
+      ctx2.fillRect(q.x,q.y,q.r,q.r);
+    }
+  }
+  /* floating lights in the cavern */
+  const cav=range(p,.6,.68)*(1-range(p,.965,1));
+  if(cav>0){
+    for(const f of floaters){
+      f.ph+=.01*f.sp;
+      const x=f.x+Math.sin(f.ph)*22,y=f.y+Math.cos(f.ph*.7)*14;
+      const a=cav*(.25+.5*Math.abs(Math.sin(f.ph*1.3)))*(1+pulse*.5);
+      ctx2.fillStyle=`rgba(${f.c},${clamp(a,0,1)})`;
+      ctx2.beginPath();ctx2.arc(x,y,f.r,0,7);ctx2.fill();
+    }
+  }
+  ctx2.globalCompositeOperation="source-over";
+}
+
+/* ---------------- audio engine (synth techno, no assets) ---------------- */
+const BPM=132,SPB=60/BPM;
+const audio={
+  ctx:null,master:null,filter:null,on:false,next:0,step:0,timer:null,
+  start(){
+    if(this.ctx){this.ctx.resume();this.on=true;return;}
+    const C=new (window.AudioContext||window.webkitAudioContext)();
+    this.ctx=C;
+    this.master=C.createGain();this.master.gain.value=0;
+    this.filter=C.createBiquadFilter();this.filter.type="lowpass";this.filter.frequency.value=300;
+    const comp=C.createDynamicsCompressor();
+    this.filter.connect(comp);comp.connect(this.master);this.master.connect(C.destination);
+    /* noise buffer for hats / claps */
+    const nb=C.createBuffer(1,C.sampleRate*.5,C.sampleRate),d=nb.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    this.noise=nb;
+    this.next=C.currentTime+.1;this.step=0;
+    this.timer=setInterval(()=>this.sched(),25);
+    this.on=true;
+  },
+  stop(){this.on=false;if(this.ctx)this.ctx.suspend();},
+  sched(){
+    if(!this.on)return;
+    const C=this.ctx;
+    while(this.next<C.currentTime+.12){
+      this.play(this.step,this.next);
+      this.next+=SPB/4;this.step=(this.step+1)%32;
+    }
+  },
+  env(t,a,peak,dur){const g=this.ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(.001,t+dur);return g;},
+  play(s,t){
+    const C=this.ctx,depth=progress;
+    /* kick — every beat */
+    if(s%4===0){
+      const o=C.createOscillator();o.type="sine";
+      o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(42,t+.11);
+      const g=this.env(t,.002,1,.3);o.connect(g);g.connect(this.filter);
+      o.start(t);o.stop(t+.32);
+      const dt=(t-C.currentTime)*1000;
+      setTimeout(()=>{lastKick=performance.now();kickCount++;},Math.max(0,dt));
+    }
+    /* offbeat sub bass */
+    if(s%4===2&&depth>.12){
+      const semis=[0,0,7,0,3,0,10,8][(s>>2)%8];
+      const o=C.createOscillator();o.type="square";
+      o.frequency.value=55*Math.pow(2,semis/12);
+      const f=C.createBiquadFilter();f.type="lowpass";f.frequency.value=240;
+      const g=this.env(t,.005,.5,.22);
+      o.connect(f);f.connect(g);g.connect(this.filter);o.start(t);o.stop(t+.24);
+    }
+    /* hats on 8ths once vibrations begin */
+    if(s%2===1&&depth>.28){
+      const src=C.createBufferSource();src.buffer=this.noise;
+      const f=C.createBiquadFilter();f.type="highpass";f.frequency.value=8000;
+      const g=this.env(t,.001,.16,.05);
+      src.connect(f);f.connect(g);g.connect(this.filter);src.start(t);src.stop(t+.06);
+    }
+    /* clap on 2 & 4 inside the rave */
+    if(s%16===8&&depth>.58){
+      const src=C.createBufferSource();src.buffer=this.noise;
+      const f=C.createBiquadFilter();f.type="bandpass";f.frequency.value=1800;f.Q.value=.9;
+      const g=this.env(t,.001,.35,.18);
+      src.connect(f);f.connect(g);g.connect(this.filter);src.start(t);src.stop(t+.2);
+    }
+    /* acid stab every 2 bars in the deep half */
+    if(s===0&&depth>.4&&kickCount%8<4){
+      const o=C.createOscillator();o.type="sawtooth";o.frequency.value=220;
+      const f=C.createBiquadFilter();f.type="lowpass";f.Q.value=12;
+      f.frequency.setValueAtTime(300,t);f.frequency.exponentialRampToValueAtTime(2600,t+.4);
+      const g=this.env(t,.01,.12,.5);
+      o.connect(f);f.connect(g);g.connect(this.filter);o.start(t);o.stop(t+.52);
+    }
+  },
+  update(depth){
+    if(!this.ctx||!this.on)return;
+    /* louder + brighter the deeper you go: muffled bassline from afar → full system */
+    const gain=clamp(.04+Math.pow(depth,1.3)*.5,0,.5);
+    const cut=180+Math.pow(depth,2)*13000;
+    this.master.gain.setTargetAtTime(gain,this.ctx.currentTime,.2);
+    this.filter.frequency.setTargetAtTime(cut,this.ctx.currentTime,.3);
+  },
+};
+let lastKick=-1e9,kickCount=0;
+
+const soundBtn=document.getElementById("sound");
+soundBtn.addEventListener("click",()=>{
+  if(audio.on){audio.stop();soundBtn.textContent="▶ Sound: Off";soundBtn.classList.remove("on");}
+  else{audio.start();soundBtn.textContent="✕ Sound: On";soundBtn.classList.add("on");}
+});
+document.getElementById("enter").addEventListener("click",()=>{
+  if(!audio.on){audio.start();soundBtn.textContent="✕ Sound: On";soundBtn.classList.add("on");}
+  scrollTo({top:innerHeight*1.6,behavior:"smooth"});
+});
+document.getElementById("claim").addEventListener("click",()=>{
+  alert("ENTRY CODE QUEUED.\n\nCoordinates drop 24h before doors.\nKeep your phone charged. Tell no one.");
+});
+
+/* ---------------- zones ---------------- */
+const ZONES=[
+  {el:document.getElementById("z-techno"),a:.70,b:.76,tint:"radial-gradient(80% 80% at 50% 60%,rgba(47,184,255,.12),transparent)"},
+  {el:document.getElementById("z-decks"), a:.76,b:.82,tint:"radial-gradient(80% 80% at 50% 60%,rgba(157,255,47,.10),transparent)"},
+  {el:document.getElementById("z-hard"),  a:.82,b:.88,tint:"radial-gradient(80% 80% at 50% 60%,rgba(247,209,0,.10),transparent)"},
+  {el:document.getElementById("z-psy"),   a:.88,b:.94,tint:"radial-gradient(80% 80% at 50% 60%,rgba(177,75,255,.14),transparent)"},
+];
+
+/* ---------------- HUD ---------------- */
+function hud(p){
+  const m=Math.round(p*64);
+  hudDepth.innerHTML=`<b>DEPTH</b> −${m}M · ${p<.05?"SURFACE":"BENEATH AARHUS"}`;
+  let st;
+  if(p<.06)st="SIGNAL: OK · 02:47";
+  else if(p<.2)st="SERVICE TUNNEL B-7 · UNAUTHORIZED";
+  else if(p<.35)st="SIGNAL LOST · KEEP MOVING";
+  else if(p<.5)st="STRUCTURAL VIBRATION DETECTED";
+  else if(p<.62)st="REALITY INTEGRITY: FAILING";
+  else if(p<.7)st="WELCOME TO GLITCH";
+  else if(p<.94)st="GLITCH UNDERCITY · EXPLORE";
+  else st="ACCESS CONTROL · FINAL CHAMBER";
+  if(hudStatus.textContent!==st)hudStatus.textContent=st;
+}
+
+/* ---------------- main loop ---------------- */
+let progress=0,target=0,mx=0,my=0;
+addEventListener("scroll",()=>{
+  const max=document.body.scrollHeight-innerHeight;
+  target=max>0?scrollY/max:0;
+},{passive:true});
+addEventListener("mousemove",e=>{
+  mx=(e.clientX/innerWidth-.5)*2;my=(e.clientY/innerHeight-.5)*2;
+},{passive:true});
+
+function frame(now){
+  progress=lerp(progress,target,.08);
+  const p=progress;
+
+  /* beat clock: audio-driven if playing, free-running otherwise */
+  if(!audio.on&&p>.2){
+    const beat=now%(SPB*1000);
+    if(beat<34&&now-lastKick>SPB*500){lastKick=now;kickCount++;}
+  }
+  const pulseRaw=Math.pow(clamp(1-(now-lastKick)/(SPB*1000),0,1),2.5);
+  const pulseAmp=range(p,.22,.45);                 // bass vibrations fade in
+  const pulse=REDUCED?0:pulseRaw*pulseAmp;
+  document.documentElement.style.setProperty("--pulse",pulse.toFixed(3));
+  document.documentElement.style.setProperty("--depth",p.toFixed(3));
+
+  /* camera through the tunnel */
+  const travel=range(p,.04,.58);
+  const camZ=travel*(NSEG-2.2)*SEG;
+  const glitchI=range(p,.46,.58)*(1-range(p,.6,.66));
+  const shake=REDUCED?0:pulse*5+glitchI*7;
+  const sx=(Math.random()-.5)*shake,sy=(Math.random()-.5)*shake;
+  world.style.transform=`translate3d(${sx}px,${sy}px,${camZ}px)`;
+  tilt.style.transform=`rotateY(${mx*-2}deg) rotateX(${my*1.4}deg)`;
+
+  /* per-segment fog + culling */
+  for(const s of segs){
+    const dist=s.z-camZ;
+    if(dist<-SEG*1.2||dist>SEG*9){s.el.style.visibility="hidden";continue;}
+    s.el.style.visibility="visible";
+    s.el.style.setProperty("--fog",clamp(dist/(SEG*7),0,.97).toFixed(3));
+  }
+
+  /* tunnel → cavern crossfade */
+  const tunnelOp=1-range(p,.56,.645);
+  world.style.opacity=tunnelOp;
+  world.style.display=tunnelOp<=0?"none":"";
+  const cavIn=range(p,.585,.68),cavOut=range(p,.965,1);
+  cavern.style.opacity=(cavIn*(1-cavOut*.55)).toFixed(3);
+  if(cavIn>0){
+    const zp=range(p,.7,.94);
+    cavInner.style.transform=
+      `scale(${(1.14-.14*cavIn+zp*.06).toFixed(3)}) translate(${(mx*-1.2-zp*5).toFixed(2)}%,${(my*-1+cavIn*0).toFixed(2)}%)`;
+  }
+
+  /* intro fade */
+  intro.style.opacity=1-range(p,.005,.05);
+  intro.style.pointerEvents=p>.04?"none":"";
+
+  /* glitch veil + strobe flash */
+  veil.style.opacity=glitchI.toFixed(3);
+  let fl=pulse*.07;
+  if(p>.62&&p<.96&&kickCount%4===0)fl+=pulseRaw*.18;   // cavern strobe on every 4th kick
+  fl+=glitchI*pulseRaw*.15;
+  flash.style.opacity=REDUCED?0:fl.toFixed(3);
+
+  /* zones */
+  let tint=null;
+  for(const z of ZONES){
+    const tin=range(p,z.a,z.a+.018),tout=range(p,z.b-.018,z.b);
+    const vis=tin*(1-tout);
+    z.el.style.opacity=vis.toFixed(3);
+    z.el.style.transform=`translateY(${(1-tin)*46-tout*40}px)`;
+    if(vis>.4)tint=z.tint;
+  }
+  tintEl.style.background=tint||"";
+  tintEl.style.opacity=tint?1:0;
+
+  /* ticket portal */
+  const tk=range(p,.945,.985);
+  ticket.style.opacity=tk.toFixed(3);
+  ticket.style.pointerEvents=tk>.5?"auto":"none";
+  ticket.style.transform=`scale(${(0.92+tk*.08).toFixed(3)})`;
+
+  hud(p);
+  audio.update(p);
+  drawFx(now,p,pulse);
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- boot ---------------- */
+function boot(){sizeFx();initFloaters();buildTunnel();}
+let rsTimer;
+addEventListener("resize",()=>{
+  sizeFx();initFloaters();
+  clearTimeout(rsTimer);rsTimer=setTimeout(buildTunnel,250);
+});
+boot();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
