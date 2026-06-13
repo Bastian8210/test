@@ -36,7 +36,7 @@ body{
 ::selection{background:var(--hazard);color:#000}
 
 /* ---------- scroll driver ---------- */
-#scroll-space{height:1600vh;position:relative;z-index:0}
+#scroll-space{height:1150vh;position:relative;z-index:0}
 
 /* ---------- fixed stage ---------- */
 #stage{
@@ -588,7 +588,7 @@ const ticket=document.getElementById("ticket");
 
 /* ---------------- tunnel construction ---------------- */
 const SEG=620;          // segment depth (px)
-const NSEG=26;
+const NSEG=16;          // shorter tunnel — fewer segments to the reveal
 let TW,TH;              // tunnel width / height
 const segs=[];
 
@@ -597,21 +597,34 @@ const SIGNS=[["ADGANG FORBUDT","UNAUTHORIZED PERSONNEL"],["HØJSPÆNDING","DANGE
 
 /* ----- canvas tunnel (mobile): same journey, one GPU surface ----- */
 const tdata=[];
+const pipeRuns=[];      // long pipes running along the walls across segments
 function buildTunnelData(){
-  _s=1337;tdata.length=0;
+  _s=1337;tdata.length=0;pipeRuns.length=0;
   for(let i=0;i<NSEG;i++){
     tdata.push({
       ci:Math.pow(i/NSEG,1.6),
       hue:[265,200,95][i%3],
-      light:rnd()<.8,dead:rnd()<.2,fseed:rnd()*10,
-      tape:rnd()<.55?{sd:rnd()<.5?-1:1,yf:.15+rnd()*.55}:null,
-      graf:rnd()<(.35+i/NSEG*.5)?{sd:rnd()<.5?-1:1,text:GRAFFITI[(rnd()*GRAFFITI.length)|0],yf:.05+rnd()*.5,size:26+rnd()*26+i*1.5,rot:rnd()*.22-.11}:null,
-      sign:rnd()<.45?{sd:rnd()<.5?-1:1,s:SIGNS[(rnd()*SIGNS.length)|0],yf:-.25-rnd()*.3,distort:i>NSEG*.55}:null,
+      light:rnd()<.82,dead:rnd()<.2,fseed:rnd()*10,twin:rnd()<.35,
+      tape:rnd()<.5?{sd:rnd()<.5?-1:1,yf:-.1+rnd()*.7}:null,
+      graf:rnd()<(.34+i/NSEG*.5)?{sd:rnd()<.5?-1:1,text:GRAFFITI[(rnd()*GRAFFITI.length)|0],yf:.0+rnd()*.5,size:24+rnd()*26+i*1.5,rot:rnd()*.22-.11,glow:rnd()<.5}:null,
+      sign:rnd()<.4?{sd:rnd()<.5?-1:1,s:SIGNS[(rnd()*SIGNS.length)|0],yf:-.28-rnd()*.28,distort:i>NSEG*.55}:null,
       puds:[{xf:rnd()*1.4-.7,r:26+rnd()*44},{xf:rnd()*1.4-.7,r:18+rnd()*30}],
+      stains:[{sd:rnd()<.5?-1:1,yf:-.9+rnd()*1.8,w:.18+rnd()*.3,h:.4+rnd()*.7,a:.18+rnd()*.22},
+              {sd:rnd()<.5?-1:1,yf:-.9+rnd()*1.8,w:.12+rnd()*.2,h:.3+rnd()*.5,a:.12+rnd()*.18}],
+      cctv:rnd()<.28?{sd:rnd()<.5?-1:1,yf:-.62-rnd()*.12,fseed:rnd()*9}:null,
+      barrier:rnd()<.26?{xf:rnd()*1.0-.5,w:.3+rnd()*.28}:null,
+      vent:rnd()<.3?{sd:rnd()<.5?-1:1,yf:.55+rnd()*.3}:null,
+      cable:rnd()<.55?{sd:rnd()<.5?-1:1,sag:.1+rnd()*.22,xf:.1+rnd()*.5}:null,
+      box:rnd()<.3?{sd:rnd()<.5?-1:1,yf:.2+rnd()*.4,w:.1+rnd()*.12,h:.14+rnd()*.16}:null,
     });
   }
+  /* continuous pipe runs spanning several segments each */
+  for(let r=0;r<9;r++){
+    const a=(rnd()*NSEG)|0;
+    pipeRuns.push({sd:rnd()<.5?-1:1,yk:-.62+rnd()*1.3,i0:a,i1:a+2+((rnd()*7)|0),th:5+rnd()*7,tone:rnd()});
+  }
 }
-const flickFn=(t,sd)=>(Math.sin(t*.011+sd*9)+Math.sin(t*.057+sd*3))>1.55?.12:1;
+const flickFn=(t,sd)=>(Math.sin(t*.011+sd*9)+Math.sin(t*.057+sd*3))>1.55?.14:1;
 function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
   const F=340,K=.55;
   const cx=W/2+mx*14+sx,cy=H*.48+my*9+sy;
@@ -619,7 +632,7 @@ function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
   const proj=d=>F/(F+Math.max(d,10)*K);
   ctx2.save();
   ctx2.globalAlpha=tunnelOp;
-  ctx2.fillStyle="#000";ctx2.fillRect(0,0,W,H);
+  ctx2.fillStyle="#05050a";ctx2.fillRect(0,0,W,H);
   /* the rave bleeding through the far end */
   const eg=range(p,.4,.58);
   if(eg>0){
@@ -638,36 +651,156 @@ function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
     if(d2<30)continue;
     const s1=proj(d1),s2=proj(d2),sm=proj((d1+d2)/2);
     const fa=clamp(((d1+d2)/2)/(SEG*5),0,.97);
+    const vis=1-fa;
     const fl=t.light&&!t.dead?flickFn(now,t.fseed):0;
-    const lum=(1-fa)*(.55+.45*fl)*(1+pulse*.22);
+    const lum=vis*(.5+.5*fl)*(1+pulse*.22);
     const L1=cx-hw*s1,R1=cx+hw*s1,T1=cy-hh*s1,B1=cy+hh*s1;
     const L2=cx-hw*s2,R2=cx+hw*s2,T2=cy-hh*s2,B2=cy+hh*s2;
-    const sh=(r,g,b)=>`rgb(${r*lum|0},${g*lum|0},${b*lum|0})`;
-    quad([L1,T1],[L2,T2],[L2,B2],[L1,B1],sh(54,54,57));   // left wall
-    quad([R1,T1],[R2,T2],[R2,B2],[R1,B1],sh(50,50,53));   // right wall
-    quad([L1,B1],[L2,B2],[R2,B2],[R1,B1],sh(22,22,25));   // floor
-    quad([L1,T1],[L2,T2],[R2,T2],[R1,T1],sh(16,16,17));   // ceiling
+    /* slightly cool concrete grey */
+    const gg=v=>{const k=v*lum;return `rgb(${k|0},${k|0},${(k*1.07)|0})`;};
+    /* walls: vertical gradient (lit near the tube band, grimy at the seams) */
+    const wgrad=(top,bot,base)=>{
+      const g=ctx2.createLinearGradient(0,top,0,bot);
+      g.addColorStop(0,gg(base*.42));g.addColorStop(.3,gg(base*1.18));
+      g.addColorStop(.6,gg(base*.86));g.addColorStop(1,gg(base*.4));
+      return g;
+    };
+    quad([L1,T1],[L2,T2],[L2,B2],[L1,B1],wgrad(T1,B1,58));   // left wall
+    quad([R1,T1],[R2,T2],[R2,B2],[R1,B1],wgrad(T1,B1,52));   // right wall
+    quad([L1,B1],[L2,B2],[R2,B2],[R1,B1],gg(20));            // floor
+    quad([L1,T1],[L2,T2],[R2,T2],[R1,T1],gg(14));            // ceiling
+    /* corrugated ceiling ribs */
+    ctx2.strokeStyle=`rgba(0,0,0,${.4*vis})`;ctx2.lineWidth=Math.max(.5,1.4*sm);
+    for(let u=.2;u<1;u+=.2){
+      const xa=lerp(L1,L2,u),xb=lerp(R1,R2,u),ya=lerp(T1,T2,u);
+      ctx2.beginPath();ctx2.moveTo(xa,ya);ctx2.lineTo(xb,ya);ctx2.stroke();
+    }
+    /* damp stains on the concrete */
+    for(const st of t.stains){
+      const sd=st.sd,wx=cx+sd*hw, gx=cx+sd*hw*sm, gy=cy+hh*sm*st.yf;
+      ctx2.fillStyle=`rgba(0,0,0,${(st.a*vis).toFixed(3)})`;
+      ctx2.beginPath();ctx2.ellipse(gx,gy,hw*sm*st.w,hh*sm*st.h,0,0,7);ctx2.fill();
+    }
     /* accent wash deepens with descent */
     if(t.ci>.02){
-      const ac=`hsla(${t.hue},100%,60%,${(t.ci*.1*(1-fa)).toFixed(3)})`;
+      const ac=`hsla(${t.hue},100%,60%,${(t.ci*.1*vis).toFixed(3)})`;
       quad([L1,T1],[L2,T2],[L2,B2],[L1,B1],ac);
       quad([R1,T1],[R2,T2],[R2,B2],[R1,B1],ac);
       quad([L1,B1],[L2,B2],[R2,B2],[R1,B1],ac);
     }
-    /* ring seam */
-    ctx2.strokeStyle=`rgba(0,0,0,${.5*(1-fa)})`;ctx2.lineWidth=Math.max(1,2*s1);
+    /* panel seam + rivets at the near ring */
+    ctx2.strokeStyle=`rgba(0,0,0,${.55*vis})`;ctx2.lineWidth=Math.max(1,2.4*s1);
     ctx2.strokeRect(L1,T1,R1-L1,B1-T1);
-    /* fluorescent tube + glow */
-    if(t.light){
-      const y=cy-hh*sm+Math.max(2,3*sm),w=hw*sm*.32;
-      if(fl>0){
-        const g=ctx2.createRadialGradient(cx,y,0,cx,y,hw*sm*.5);
-        g.addColorStop(0,`rgba(230,240,255,${(.2*fl*(.5+pulse)).toFixed(3)})`);
-        g.addColorStop(1,"rgba(230,240,255,0)");
-        ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(cx,y,hw*sm*.5,0,7);ctx2.fill();
+    if(s1>.12){
+      ctx2.fillStyle=`rgba(${20*lum|0},${20*lum|0},${24*lum|0},${vis})`;
+      const rr=Math.max(1,2.4*s1);
+      for(const c of [[L1,T1],[R1,T1],[L1,B1],[R1,B1],[L1,(T1+B1)/2],[R1,(T1+B1)/2]]){
+        ctx2.beginPath();ctx2.arc(c[0],c[1],rr,0,7);ctx2.fill();
+        ctx2.fillStyle=`rgba(${90*lum|0},${90*lum|0},${96*lum|0},${vis})`;
+        ctx2.beginPath();ctx2.arc(c[0]-rr*.3,c[1]-rr*.3,rr*.4,0,7);ctx2.fill();
+        ctx2.fillStyle=`rgba(${20*lum|0},${20*lum|0},${24*lum|0},${vis})`;
       }
-      ctx2.fillStyle=fl>0?`rgba(255,255,255,${fl*(1-fa)})`:"#222";
-      ctx2.fillRect(cx-w,y,w*2,Math.max(1.5,4*sm));
+    }
+    /* pipes running along the walls (continuous across segments) */
+    for(const pr of pipeRuns){
+      if(i<pr.i0||i>=pr.i1)continue;
+      const sd=pr.sd,yk=pr.yk;
+      const nx1=cx+sd*hw*s1,ny1=cy+hh*s1*yk,nx2=cx+sd*hw*s2,ny2=cy+hh*s2*yk;
+      const th1=Math.max(1.2,pr.th*s1),th2=Math.max(.8,pr.th*s2);
+      const base=pr.tone<.4?70:pr.tone<.7?54:42;
+      ctx2.fillStyle=gg(base*.7);
+      ctx2.beginPath();ctx2.moveTo(nx1,ny1-th1);ctx2.lineTo(nx2,ny2-th2);
+      ctx2.lineTo(nx2,ny2+th2);ctx2.lineTo(nx1,ny1+th1);ctx2.closePath();ctx2.fill();
+      ctx2.strokeStyle=gg(base*1.6);ctx2.lineWidth=Math.max(.5,th1*.4);
+      ctx2.beginPath();ctx2.moveTo(nx1,ny1-th1*.5);ctx2.lineTo(nx2,ny2-th2*.5);ctx2.stroke();
+      if(s1>.14){ /* bracket at the near end */
+        ctx2.fillStyle=gg(34);
+        ctx2.fillRect(nx1-th1*.5,ny1-th1*1.5,th1,th1*3);
+      }
+    }
+    /* hanging cables drooping from the ceiling */
+    if(t.cable&&s1>.06){
+      const cb=t.cable,sd=cb.sd;
+      const ax=cx+sd*hw*sm*cb.xf, ay=cy-hh*sm*.96;
+      const bx=cx+sd*hw*sm*(cb.xf+.32), by=ay;
+      const my2=ay+hh*sm*cb.sag*(1+pulse*.4);
+      ctx2.strokeStyle=`rgba(${8*lum|0},${8*lum|0},${10*lum|0},${vis})`;
+      ctx2.lineWidth=Math.max(1,3*sm);
+      ctx2.beginPath();ctx2.moveTo(ax,ay);ctx2.quadraticCurveTo((ax+bx)/2,my2,bx,by);ctx2.stroke();
+    }
+    /* junction box on the wall */
+    if(t.box&&fa<.9){
+      const bx=t.box,sd=bx.sd;
+      const gx=cx+sd*hw*sm, gy=cy+hh*sm*bx.yf, w=hw*sm*bx.w, h=hh*sm*bx.h;
+      ctx2.fillStyle=gg(40);ctx2.fillRect(gx-w/2,gy-h/2,w,h);
+      ctx2.fillStyle=gg(64);ctx2.fillRect(gx-w/2,gy-h/2,w,Math.max(1,h*.16));
+      ctx2.strokeStyle=`rgba(0,0,0,${.6*vis})`;ctx2.lineWidth=1;
+      ctx2.strokeRect(gx-w/2,gy-h/2,w,h);
+    }
+    /* steam vent: a dark grate + the FX layer adds the rising steam */
+    if(t.vent&&s1>.1){
+      const sd=t.vent.sd,gx=cx+sd*hw*sm,gy=cy+hh*sm*t.vent.yf,w=hw*sm*.12,h=hh*sm*.06;
+      ctx2.fillStyle=gg(24);ctx2.fillRect(gx-w/2,gy-h/2,w,h);
+      ctx2.strokeStyle=gg(48);ctx2.lineWidth=Math.max(.5,1*sm);
+      for(let v=-1;v<=1;v++){ctx2.beginPath();ctx2.moveTo(gx-w/2,gy+v*h*.3);ctx2.lineTo(gx+w/2,gy+v*h*.3);ctx2.stroke();}
+    }
+    /* fluorescent tube fixture + glow */
+    if(t.light){
+      const y=cy-hh*sm+Math.max(2,4*sm),w=hw*sm*(t.twin?.4:.32);
+      ctx2.fillStyle=gg(26);ctx2.fillRect(cx-w-2*sm,y-2*sm,(w+2*sm)*2,Math.max(3,9*sm)); // housing
+      if(fl>0){
+        const g=ctx2.createRadialGradient(cx,y,0,cx,y,hw*sm*.55);
+        g.addColorStop(0,`rgba(225,238,255,${(.26*fl*(.5+pulse)).toFixed(3)})`);
+        g.addColorStop(1,"rgba(225,238,255,0)");
+        ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(cx,y,hw*sm*.55,0,7);ctx2.fill();
+      }
+      ctx2.fillStyle=fl>0?`rgba(255,255,255,${fl*vis})`:"#1c1c1f";
+      const th=Math.max(1.5,4*sm);
+      if(t.twin){ctx2.fillRect(cx-w,y-th,w*2,th*.8);ctx2.fillRect(cx-w,y+th*.4,w*2,th*.8);}
+      else ctx2.fillRect(cx-w,y,w*2,th);
+    }
+    /* construction barrier on the floor */
+    if(t.barrier&&s1>.08){
+      const br=t.barrier, gx=cx+br.xf*hw*sm, gy=cy+hh*sm*.9, w=hw*sm*br.w, h=Math.max(3,12*sm);
+      ctx2.save();
+      ctx2.beginPath();ctx2.rect(gx-w/2,gy-h,w,h);ctx2.clip();
+      ctx2.fillStyle=`rgba(247,209,0,${vis})`;ctx2.fillRect(gx-w/2,gy-h,w,h);
+      ctx2.fillStyle=`rgba(12,12,12,${vis})`;
+      const stp=Math.max(5,h*.9);
+      for(let xx=-h;xx<w+h;xx+=stp*2){
+        ctx2.beginPath();ctx2.moveTo(gx-w/2+xx,gy);ctx2.lineTo(gx-w/2+xx+stp,gy);
+        ctx2.lineTo(gx-w/2+xx+stp-h,gy-h);ctx2.lineTo(gx-w/2+xx-h,gy-h);ctx2.closePath();ctx2.fill();
+      }
+      ctx2.restore();
+      ctx2.fillStyle=gg(28);ctx2.fillRect(gx-w/2+w*.12,gy,Math.max(1,2*sm),h*.7);
+      ctx2.fillRect(gx+w/2-w*.12,gy,Math.max(1,2*sm),h*.7);
+    }
+    /* broken CCTV with a stuttering red LED */
+    if(t.cctv&&fa<.9){
+      const cc=t.cctv,sd=cc.sd,gx=cx+sd*hw*sm*.9,gy=cy+hh*sm*cc.yf,w=hw*sm*.07,h=hh*sm*.05;
+      ctx2.save();ctx2.translate(gx,gy);ctx2.rotate(sd*.3);
+      ctx2.fillStyle=gg(34);ctx2.fillRect(-w/2,-h/2,w,h);
+      ctx2.fillStyle=gg(18);ctx2.beginPath();ctx2.arc(sd*w*.6,0,h*.4,0,7);ctx2.fill();
+      const blink=(Math.sin(now*.02+cc.fseed)+Math.sin(now*.011))>1.3?1:0;
+      if(blink){ctx2.fillStyle=`rgba(255,40,40,${vis})`;ctx2.beginPath();ctx2.arc(-w*.2,0,Math.max(1,h*.2),0,7);ctx2.fill();}
+      ctx2.restore();
+    }
+    /* wet reflective floor: a central sheen + puddles reacting to the light */
+    if(s1>.08){
+      const ry=cy+hh*sm*.55, rw=hw*sm*.5, ra=(.04+pulse*.16+fl*.05)*vis;
+      const g=ctx2.createLinearGradient(cx,cy+hh*sm*.18,cx,cy+hh*sm);
+      g.addColorStop(0,`rgba(200,215,235,${ra.toFixed(3)})`);
+      g.addColorStop(1,"rgba(200,215,235,0)");
+      ctx2.fillStyle=g;ctx2.beginPath();
+      ctx2.moveTo(cx-rw*.4,cy+hh*sm*.2);ctx2.lineTo(cx+rw*.4,cy+hh*sm*.2);
+      ctx2.lineTo(cx+rw,B1);ctx2.lineTo(cx-rw,B1);ctx2.closePath();ctx2.fill();
+    }
+    for(const pu of t.puds){
+      const px=cx+pu.xf*hw*sm*.8,py=cy+hh*sm*.96;
+      const a=vis*(.05+pulse*t.ci*.55+fl*.05);
+      if(a<=.01)continue;
+      ctx2.fillStyle=`hsla(${t.hue},85%,80%,${a.toFixed(3)})`;
+      ctx2.beginPath();ctx2.ellipse(px,py,pu.r*sm,pu.r*sm*.3,0,0,7);ctx2.fill();
     }
     /* caution tape along a wall */
     if(t.tape){
@@ -679,7 +812,7 @@ function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
       ctx2.beginPath();
       ctx2.moveTo(x1,y1-th1);ctx2.lineTo(x2,y2-th2);ctx2.lineTo(x2,y2+th2);ctx2.lineTo(x1,y1+th1);
       ctx2.closePath();
-      ctx2.fillStyle=`rgba(247,209,0,${(.9*(1-fa)).toFixed(3)})`;ctx2.fill();
+      ctx2.fillStyle=`rgba(247,209,0,${(.92*vis).toFixed(3)})`;ctx2.fill();
       ctx2.clip();
       ctx2.strokeStyle="rgba(13,13,13,.95)";ctx2.lineWidth=th1*.8;
       for(let u=0;u<=1;u+=.13){
@@ -688,17 +821,25 @@ function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
       }
       ctx2.restore();
     }
-    /* graffiti on the wall, perspective-sheared */
+    /* graffiti / spray-painted glow logo, perspective-sheared */
     if(t.graf&&fa<.92){
       const g=t.graf,sd=g.sd;
       ctx2.save();
       ctx2.translate(cx+sd*hw*sm*.9,cy+hh*sm*g.yf);
       ctx2.transform(1,sd*-.28,0,1,0,0);
       ctx2.rotate(g.rot);
-      ctx2.font=`900 ${Math.max(6,g.size*sm*1.6)|0}px "Arial Black",Impact,sans-serif`;
+      const fs=Math.max(6,g.size*sm*1.6);
+      ctx2.font=`900 ${fs|0}px "Arial Black",Impact,sans-serif`;
       ctx2.textAlign=sd<0?"left":"right";
+      if(g.glow){ /* soft spray glow via radial gradient (cheap, no shadowBlur) */
+        const gw=ctx2.measureText(g.text).width;
+        const rg=ctx2.createRadialGradient(sd<0?gw*.5:-gw*.5,-fs*.3,0,sd<0?gw*.5:-gw*.5,-fs*.3,gw*.7);
+        rg.addColorStop(0,`hsla(${t.hue},100%,65%,${(.5*(.4+t.ci)*vis).toFixed(3)})`);
+        rg.addColorStop(1,`hsla(${t.hue},100%,65%,0)`);
+        ctx2.fillStyle=rg;ctx2.fillRect(sd<0?-fs:-gw-fs,-fs*1.2,gw+fs*2,fs*1.8);
+      }
       ctx2.fillStyle="rgba(0,0,0,.6)";ctx2.fillText(g.text,2,2);
-      ctx2.fillStyle=`hsla(${t.hue},100%,62%,${((.3+t.ci*.7)*(1-fa)).toFixed(3)})`;
+      ctx2.fillStyle=`hsla(${t.hue},100%,${g.glow?68:60}%,${((.32+t.ci*.68)*vis).toFixed(3)})`;
       ctx2.fillText(g.text,0,0);
       ctx2.restore();
     }
@@ -710,7 +851,7 @@ function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
       ctx2.transform(1,sd*-.28,0,1,0,0);
       if(sg.distort)ctx2.transform(1,0,Math.sin(now*.02)*.25,1,0,0);
       const w=150*sm,h=64*sm;
-      ctx2.globalAlpha=tunnelOp*(1-fa);
+      ctx2.globalAlpha=tunnelOp*vis;
       ctx2.fillStyle="#0a0a0a";ctx2.fillRect(sd<0?0:-w,-h/2,w,h);
       ctx2.fillStyle="#f7d100";ctx2.fillRect((sd<0?0:-w)+3*sm,-h/2+3*sm,w-6*sm,h-6*sm);
       ctx2.fillStyle="#0a0a0a";ctx2.textAlign="center";
@@ -721,15 +862,11 @@ function drawTunnel(now,p,pulse,camZ,tunnelOp,sx,sy){
       ctx2.restore();
       ctx2.globalAlpha=tunnelOp;
     }
-    /* wet puddles catching the light pulse */
-    for(const pu of t.puds){
-      const px=cx+pu.xf*hw*sm*.8,py=cy+hh*sm*.96;
-      const a=(1-fa)*(.05+pulse*t.ci*.5+fl*.04);
-      if(a<=.01)continue;
-      ctx2.fillStyle=`hsla(${t.hue},80%,80%,${a.toFixed(3)})`;
-      ctx2.beginPath();ctx2.ellipse(px,py,pu.r*sm,pu.r*sm*.3,0,0,7);ctx2.fill();
-    }
   }
+  /* edge vignette so the tunnel sinks into darkness */
+  const vg=ctx2.createRadialGradient(cx,cy,Math.min(W,H)*.2,cx,cy,Math.max(W,H)*.7);
+  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,`rgba(0,0,0,${.55*tunnelOp})`);
+  ctx2.globalAlpha=1;ctx2.fillStyle=vg;ctx2.fillRect(0,0,W,H);
   ctx2.restore();
 }
 
